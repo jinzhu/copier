@@ -2,7 +2,7 @@ package lib
 
 import "reflect"
 
-func Copy(m interface{}, n interface{}) (err error) {
+func Copy(copy_from interface{}, copy_to interface{}) (err error) {
 	var (
 		is_slice    bool
 		from_typ    reflect.Type
@@ -10,8 +10,8 @@ func Copy(m interface{}, n interface{}) (err error) {
 		elem_amount int
 	)
 
-	from := reflect.ValueOf(m)
-	to := reflect.ValueOf(n)
+	from := reflect.ValueOf(copy_from)
+	to := reflect.ValueOf(copy_to)
 	from_elem := reflect.Indirect(from)
 	to_elem := reflect.Indirect(to)
 

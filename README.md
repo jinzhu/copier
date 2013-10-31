@@ -4,9 +4,9 @@
 
 ## Features
 
-* Copy field with same name
-* Copy from method to field with same name
-* Copy from field to method with same name
+* Copy field to filed if name exactly match
+* Copy from method to field if method name and field name exactly match
+* Copy from field to method if field name and method name exactly match
 * Copy slice to slice
 
 ## Usage
