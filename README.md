@@ -12,6 +12,7 @@
 ## Usage
 
 ```go
+import . "github.com/jinzhu/copier"
 
 type User struct {
 	Name string
@@ -40,12 +41,12 @@ employee := Employee{}
 
 Copy(&user, &employee)
 
-employee => Employee{ Name: "Jinzhu",           // Copy from field
-                      Age: 18,                  // Copy from field
-                      DoubleAge: 36,            // Copy from method
-                      EmployeeId: 0,            // Just ignored
-                      SuperRule: "Super Admin", // Copy to method
-                     }
+// employee => Employee{ Name: "Jinzhu",           // Copy from field
+//                       Age: 18,                  // Copy from field
+//                       DoubleAge: 36,            // Copy from method
+//                       EmployeeId: 0,            // Just ignored
+//                       SuperRule: "Super Admin", // Copy to method
+//                      }
 
 // Copy a slice? that's it
 users := []User{{Name: "Jinzhu", Age: 18, Role: "Admin"}, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
