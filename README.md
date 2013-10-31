@@ -39,7 +39,7 @@ func (employee *Employee) Role(role string) {
 user := User{Name: "Jinzhu", Age: 18, Role: "Admin"}
 employee := Employee{}
 
-Copy(&user, &employee)
+Copy(&employee, &user)
 
 // employee => Employee{ Name: "Jinzhu",           // Copy from field
 //                       Age: 18,                  // Copy from field
@@ -52,6 +52,6 @@ Copy(&user, &employee)
 users := []User{{Name: "Jinzhu", Age: 18, Role: "Admin"}, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
 employees := []Employee{}
 
-Copy(&users, &employees)
+Copy(&employees, &users)
 
 ```

@@ -34,7 +34,7 @@ func TestCopyStruct(t *testing.T) {
 	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
 	employee := Employee{}
 
-	Copy(&user, &employee)
+	Copy(&employee, &user)
 
 	if employee.Name != "Jinzhu" {
 		t.Errorf("Name haven't been copied correctly.")
@@ -77,7 +77,7 @@ func TestCopySlice(t *testing.T) {
 	users := []User{user, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
 	employees := []Employee{}
 
-	Copy(&users, &employees)
+	Copy(&employees, &users)
 
 	if employees[0].Name != "Jinzhu" {
 		t.Errorf("Name haven't been copied correctly.")

@@ -2,7 +2,7 @@ package lib
 
 import "reflect"
 
-func Copy(copy_from interface{}, copy_to interface{}) (err error) {
+func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 	var (
 		is_slice    bool
 		from_typ    reflect.Type
