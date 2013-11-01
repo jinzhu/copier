@@ -1,6 +1,8 @@
-package lib
+package copier
 
 import (
+	"encoding/json"
+
 	"reflect"
 
 	"testing"
@@ -122,5 +124,36 @@ func TestCopySlice(t *testing.T) {
 
 	if !reflect.DeepEqual(user.Notes, []string{"hello world", "welcome"}) {
 		t.Errorf("Employee's Note should not be changed")
+	}
+}
+
+func BenchmarkCopyStruct(b *testing.B) {
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
+	for x := 0; x < b.N; x++ {
+		Copy(&Employee{}, &user)
+	}
+}
+
+func BenchmarkNamaCopy(b *testing.B) {
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
+	for x := 0; x < b.N; x++ {
+		employee := &Employee{
+			Name:      user.Name,
+			Age:       user.Age,
+			DoubleAge: user.DoubleAge(),
+			Notes:     user.Notes,
+		}
+		employee.Role(user.Role)
+	}
+}
+
+func BenchmarkJsonMarshalCopy(b *testing.B) {
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
+	for x := 0; x < b.N; x++ {
+		data, _ := json.Marshal(user)
+		var employee Employee
+		json.Unmarshal(data, &employee)
+		employee.DoubleAge = user.DoubleAge()
+		employee.Role(user.Role)
 	}
 }
