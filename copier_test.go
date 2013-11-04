@@ -76,10 +76,18 @@ func TestCopyStruct(t *testing.T) {
 
 func TestCopySlice(t *testing.T) {
 	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
-	users := []User{user, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
+	users := []User{{Name: "jinzhu 2", Age: 30, Role: "Dev"}}
 	employees := []Employee{}
 
+	Copy(&employees, &user)
+	if len(employees) != 1 {
+		t.Errorf("Should only have one elem when copy struct to slice")
+	}
+
 	Copy(&employees, &users)
+	if len(employees) != 2 {
+		t.Errorf("Should have two elems when copy additional slice to slice")
+	}
 
 	if employees[0].Name != "Jinzhu" {
 		t.Errorf("Name haven't been copied correctly.")

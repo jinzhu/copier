@@ -15,11 +15,17 @@ func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 	from_elem := reflect.Indirect(from)
 	to_elem := reflect.Indirect(to)
 
-	if from_elem.Kind() == reflect.Slice && to_elem.Kind() == reflect.Slice {
+	if to_elem.Kind() == reflect.Slice {
 		is_slice = true
-		from_typ = from_elem.Type().Elem()
+		if from_elem.Kind() == reflect.Slice {
+			from_typ = from_elem.Type().Elem()
+			elem_amount = from_elem.Len()
+		} else {
+			from_typ = from_elem.Type()
+			elem_amount = 1
+		}
+
 		to_typ = to_elem.Type().Elem()
-		elem_amount = from_elem.Len()
 	} else {
 		from_typ = from_elem.Type()
 		to_typ = to_elem.Type()
@@ -29,7 +35,11 @@ func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 	for e := 0; e < elem_amount; e++ {
 		var dest, source reflect.Value
 		if is_slice {
-			source = from_elem.Index(e)
+			if from_elem.Kind() == reflect.Slice {
+				source = from_elem.Index(e)
+			} else {
+				source = from_elem
+			}
 		} else {
 			source = from_elem
 		}
