@@ -4,7 +4,7 @@
 
 ## Features
 
-* Copy field to filed if name exactly match
+* Copy field to field if name exactly match
 * Copy from method to field if method name and field name exactly match
 * Copy from field to method if field name and method name exactly match
 * Copy slice to slice
