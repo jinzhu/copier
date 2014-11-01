@@ -135,6 +135,68 @@ func TestCopySlice(t *testing.T) {
 	}
 }
 
+func TestCopySliceWithPtr(t *testing.T) {
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
+	user2 := &User{Name: "jinzhu 2", Age: 30, Role: "Dev"}
+	users := []*User{user2}
+	employees := []*Employee{}
+
+	Copy(&employees, &user)
+	if len(employees) != 1 {
+		t.Errorf("Should only have one elem when copy struct to slice")
+	}
+
+	Copy(&employees, &users)
+	if len(employees) != 2 {
+		t.Errorf("Should have two elems when copy additional slice to slice")
+	}
+
+	if employees[0].Name != "Jinzhu" {
+		t.Errorf("Name haven't been copied correctly.")
+	}
+	if employees[0].Age != 18 {
+		t.Errorf("Age haven't been copied correctly.")
+	}
+	if employees[0].DoubleAge != 36 {
+		t.Errorf("Copy copy from method doesn't work")
+	}
+	if employees[0].SuperRule != "Super Admin" {
+		t.Errorf("Copy Attributes should support copy to method")
+	}
+
+	if employees[1].Name != "jinzhu 2" {
+		t.Errorf("Name haven't been copied correctly.")
+	}
+	if employees[1].Age != 30 {
+		t.Errorf("Age haven't been copied correctly.")
+	}
+	if employees[1].DoubleAge != 60 {
+		t.Errorf("Copy copy from method doesn't work")
+	}
+	if employees[1].SuperRule != "Super Dev" {
+		t.Errorf("Copy Attributes should support copy to method")
+	}
+
+	employee := employees[0]
+	user.Notes = append(user.Notes, "welcome")
+	if !reflect.DeepEqual(user.Notes, []string{"hello world", "welcome"}) {
+		t.Errorf("User's Note should be changed")
+	}
+
+	if !reflect.DeepEqual(employee.Notes, []string{"hello world"}) {
+		t.Errorf("Employee's Note should not be changed")
+	}
+
+	employee.Notes = append(employee.Notes, "golang")
+	if !reflect.DeepEqual(employee.Notes, []string{"hello world", "golang"}) {
+		t.Errorf("Employee's Note should be changed")
+	}
+
+	if !reflect.DeepEqual(user.Notes, []string{"hello world", "welcome"}) {
+		t.Errorf("Employee's Note should not be changed")
+	}
+}
+
 func BenchmarkCopyStruct(b *testing.B) {
 	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
 	for x := 0; x < b.N; x++ {

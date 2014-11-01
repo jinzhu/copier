@@ -4,10 +4,12 @@ import "reflect"
 
 func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 	var (
-		is_slice    bool
-		from_typ    reflect.Type
-		to_typ      reflect.Type
-		elem_amount int
+		is_slice        bool
+		from_typ        reflect.Type
+		is_from_typ_ptr bool
+		to_typ          reflect.Type
+		is_to_typ_ptr   bool
+		elem_amount     int
 	)
 
 	from := reflect.ValueOf(copy_from)
@@ -19,6 +21,10 @@ func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 		is_slice = true
 		if from_elem.Kind() == reflect.Slice {
 			from_typ = from_elem.Type().Elem()
+			if from_typ.Kind() == reflect.Ptr {
+				from_typ = from_typ.Elem()
+				is_from_typ_ptr = true
+			}
 			elem_amount = from_elem.Len()
 		} else {
 			from_typ = from_elem.Type()
@@ -26,6 +32,11 @@ func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 		}
 
 		to_typ = to_elem.Type().Elem()
+		if to_typ.Kind() == reflect.Ptr {
+			to_typ = to_typ.Elem()
+			is_to_typ_ptr = true
+		}
+
 	} else {
 		from_typ = from_elem.Type()
 		to_typ = to_elem.Type()
@@ -37,6 +48,9 @@ func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 		if is_slice {
 			if from_elem.Kind() == reflect.Slice {
 				source = from_elem.Index(e)
+				if is_from_typ_ptr {
+					source = source.Elem()
+				}
 			} else {
 				source = from_elem
 			}
@@ -84,7 +98,12 @@ func Copy(copy_to interface{}, copy_from interface{}) (err error) {
 		}
 
 		if is_slice {
-			to_elem.Set(reflect.Append(to_elem, dest))
+			if is_to_typ_ptr {
+				to_elem.Set(reflect.Append(to_elem, dest.Addr()))
+			} else {
+				to_elem.Set(reflect.Append(to_elem, dest))
+			}
+
 		}
 	}
 	return
