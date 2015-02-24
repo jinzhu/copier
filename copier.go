@@ -2,108 +2,104 @@ package copier
 
 import "reflect"
 
-func Copy(copy_to interface{}, copy_from interface{}) (err error) {
+func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
-		is_slice        bool
-		from_typ        reflect.Type
-		is_from_typ_ptr bool
-		to_typ          reflect.Type
-		is_to_typ_ptr   bool
-		elem_amount     int
+		isSlice   bool
+		fromType  reflect.Type
+		isFromPtr bool
+		toType    reflect.Type
+		isToPtr   bool
+		amount    int
 	)
 
-	from := reflect.ValueOf(copy_from)
-	to := reflect.ValueOf(copy_to)
-	from_elem := reflect.Indirect(from)
-	to_elem := reflect.Indirect(to)
+	from := reflect.Indirect(reflect.ValueOf(fromValue))
+	to := reflect.Indirect(reflect.ValueOf(toValue))
 
-	if to_elem.Kind() == reflect.Slice {
-		is_slice = true
-		if from_elem.Kind() == reflect.Slice {
-			from_typ = from_elem.Type().Elem()
-			if from_typ.Kind() == reflect.Ptr {
-				from_typ = from_typ.Elem()
-				is_from_typ_ptr = true
+	if to.Kind() == reflect.Slice {
+		isSlice = true
+		if from.Kind() == reflect.Slice {
+			fromType = from.Type().Elem()
+			if fromType.Kind() == reflect.Ptr {
+				fromType = fromType.Elem()
+				isFromPtr = true
 			}
-			elem_amount = from_elem.Len()
+			amount = from.Len()
 		} else {
-			from_typ = from_elem.Type()
-			elem_amount = 1
+			fromType = from.Type()
+			amount = 1
 		}
 
-		to_typ = to_elem.Type().Elem()
-		if to_typ.Kind() == reflect.Ptr {
-			to_typ = to_typ.Elem()
-			is_to_typ_ptr = true
+		toType = to.Type().Elem()
+		if toType.Kind() == reflect.Ptr {
+			toType = toType.Elem()
+			isToPtr = true
 		}
-
 	} else {
-		from_typ = from_elem.Type()
-		to_typ = to_elem.Type()
-		elem_amount = 1
+		fromType = from.Type()
+		toType = to.Type()
+		amount = 1
 	}
 
-	for e := 0; e < elem_amount; e++ {
+	for e := 0; e < amount; e++ {
 		var dest, source reflect.Value
-		if is_slice {
-			if from_elem.Kind() == reflect.Slice {
-				source = from_elem.Index(e)
-				if is_from_typ_ptr {
+		if isSlice {
+			if from.Kind() == reflect.Slice {
+				source = from.Index(e)
+				if isFromPtr {
 					source = source.Elem()
 				}
 			} else {
-				source = from_elem
+				source = from
 			}
 		} else {
-			source = from_elem
+			source = from
 		}
 
-		if is_slice {
-			dest = reflect.New(to_typ).Elem()
+		if isSlice {
+			dest = reflect.New(toType).Elem()
 		} else {
-			dest = to_elem
+			dest = to
 		}
 
-		for i := 0; i < from_typ.NumField(); i++ {
-			field := from_typ.Field(i)
+		for i := 0; i < fromType.NumField(); i++ {
+			field := fromType.Field(i)
 			if !field.Anonymous {
 				name := field.Name
-				from_field := source.FieldByName(name)
-				to_field := dest.FieldByName(name)
-				to_method := dest.Addr().MethodByName(name)
-				if from_field.IsValid() && to_field.IsValid() {
-					to_field.Set(from_field)
+				fromField := source.FieldByName(name)
+				toField := dest.FieldByName(name)
+				toMethod := dest.Addr().MethodByName(name)
+				if fromField.IsValid() && toField.IsValid() {
+					toField.Set(fromField)
 				}
 
-				if from_field.IsValid() && to_method.IsValid() {
-					to_method.Call([]reflect.Value{from_field})
+				if fromField.IsValid() && toMethod.IsValid() {
+					toMethod.Call([]reflect.Value{fromField})
 				}
 			}
 		}
 
-		for i := 0; i < dest.NumField(); i++ {
-			field := to_typ.Field(i)
+		for i := 0; i < toType.NumField(); i++ {
+			field := toType.Field(i)
 			if !field.Anonymous {
 				name := field.Name
-				from_method := source.Addr().MethodByName(name)
-				to_field := dest.FieldByName(name)
+				fromMethod := source.Addr().MethodByName(name)
+				toField := dest.FieldByName(name)
 
-				if from_method.IsValid() && to_field.IsValid() {
-					values := from_method.Call([]reflect.Value{})
+				if fromMethod.IsValid() && toField.IsValid() {
+					values := fromMethod.Call([]reflect.Value{})
 					if len(values) >= 1 {
-						to_field.Set(values[0])
+						toField.Set(values[0])
 					}
 				}
 			}
 		}
 
-		if is_slice {
-			if is_to_typ_ptr {
-				to_elem.Set(reflect.Append(to_elem, dest.Addr()))
+		if isSlice {
+			if isToPtr {
+				to.Set(reflect.Append(to, dest.Addr()))
 			} else {
-				to_elem.Set(reflect.Append(to_elem, dest))
+				to.Set(reflect.Append(to, dest))
 			}
-
 		}
 	}
 	return

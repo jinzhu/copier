@@ -63,3 +63,15 @@ Copy(&employees, &users)
 
 // employees => [{hello 18 0 36 Super User} {Jinzhu 18 0 36 Super Admin} {jinzhu 2 30 0 60 Super Dev}]
 ```
+
+# Author
+
+**jinzhu**
+
+* <http://github.com/jinzhu>
+* <wosmvp@gmail.com>
+* <http://twitter.com/zhangjinzhu>
+
+## License
+
+Released under the [MIT License](https://github.com/jinzhu/copier/blob/master/License).
