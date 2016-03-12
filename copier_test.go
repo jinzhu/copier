@@ -23,15 +23,41 @@ func (user *User) DoubleAge() int32 {
 type Employee struct {
 	Name      string
 	Age       int32
-	EmployeId int64
+	EmployeID int64
 	DoubleAge int32
 	SuperRule string
 	Notes     []string
 	flags     []byte
 }
 
+type Base struct {
+	BaseField1 int
+	BaseField2 int
+}
+
+type HaveEmbed struct {
+	EmbedField1 int
+	EmbedField2 int
+	Base
+}
+
 func (employee *Employee) Role(role string) {
 	employee.SuperRule = "Super " + role
+}
+
+func TestEmbedded(t *testing.T) {
+	base := Base{}
+	embeded := HaveEmbed{}
+	embeded.BaseField1 = 1
+	embeded.BaseField2 = 2
+	embeded.EmbedField1 = 3
+	embeded.EmbedField2 = 4
+
+	Copy(&base, &embeded)
+
+	if base.BaseField1 != 1 {
+		t.Error("Embedded fields not copied")
+	}
 }
 
 func TestCopyStruct(t *testing.T) {
