@@ -13,6 +13,7 @@ type User struct {
 	Role  string
 	Age   int32
 	Notes []string
+	flags []byte
 }
 
 func (user *User) DoubleAge() int32 {
@@ -26,6 +27,7 @@ type Employee struct {
 	DoubleAge int32
 	SuperRule string
 	Notes     []string
+	flags     []byte
 }
 
 func (employee *Employee) Role(role string) {
@@ -33,7 +35,7 @@ func (employee *Employee) Role(role string) {
 }
 
 func TestCopyStruct(t *testing.T) {
-	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, flags: []byte{'x'}}
 	employee := Employee{}
 
 	Copy(&employee, &user)
