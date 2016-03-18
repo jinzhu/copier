@@ -61,8 +61,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 			dest = to
 		}
 
-		for i := 0; i < fromType.NumField(); i++ {
-			field := fromType.Field(i)
+		for _, field := range deepFields(fromType) {
 			if !field.Anonymous {
 				name := field.Name
 				fromField := source.FieldByName(name)
@@ -103,4 +102,19 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		}
 	}
 	return
+}
+
+func deepFields(ifaceType reflect.Type) []reflect.StructField {
+	var fields []reflect.StructField
+
+	for i := 0; i < ifaceType.NumField(); i++ {
+		v := ifaceType.Field(i)
+		if v.Anonymous && v.Type.Kind() == reflect.Struct {
+			fields = append(fields, deepFields(v.Type)...)
+		} else {
+			fields = append(fields, v)
+		}
+	}
+
+	return fields
 }
