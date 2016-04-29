@@ -89,6 +89,10 @@ func TestEmbedded(t *testing.T) {
 	embeded.EmbedField2 = 4
 
 	Copy(&base, &embeded)
+	
+	if base.BaseField1 != 1 {
+		t.Error("Embedded fields not copied")
+	}
 }
 
 func TestDifferentType(t *testing.T) {
