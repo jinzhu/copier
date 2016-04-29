@@ -41,6 +41,41 @@ type HaveEmbed struct {
 	Base
 }
 
+type TypeStruct1 struct {
+	Field1 	string
+	Field2  string
+}
+
+type TypeStruct2 struct {
+	Field1 	int
+	Field2  string
+}
+
+type TypeStruct3 struct {
+	Field1 	interface{}
+	Field2  string
+}
+
+type TypeStruct4 struct {
+	field1 	int
+	Field2  string
+}
+
+type TypeStruct5 struct {
+	field1 	string
+	Field2  string
+}
+
+func (t *TypeStruct4) Field1(i int) {
+	t.field1 = i
+}
+
+func (t *TypeStruct5) Field1(i interface{}) {
+	if v, ok := i.(string); ok {
+		t.field1 = v
+	}
+}
+
 func (employee *Employee) Role(role string) {
 	employee.SuperRule = "Super " + role
 }
@@ -54,9 +89,84 @@ func TestEmbedded(t *testing.T) {
 	embeded.EmbedField2 = 4
 
 	Copy(&base, &embeded)
+}
 
-	if base.BaseField1 != 1 {
-		t.Error("Embedded fields not copied")
+func TestDifferentType(t *testing.T) {
+    defer func() {
+        if r := recover(); r != nil {
+            t.Errorf("The copy did panic")
+        }
+    }()
+
+	ts := &TypeStruct1 {
+		Field1: "str1",
+		Field2: "str2",
+	}
+
+	ts2 := &TypeStruct2 {}
+
+	Copy(ts2, ts)
+}
+
+func TestDifferentTypeMethod(t *testing.T) {
+    defer func() {
+        if r := recover(); r != nil {
+            t.Errorf("The copy did panic")
+        }
+    }()
+
+	ts := &TypeStruct1 {
+		Field1: "str1",
+		Field2: "str2",
+	}
+
+	ts4 := &TypeStruct4 {}
+
+	Copy(ts4, ts)
+}
+
+func TestAssignableType(t *testing.T) {
+    defer func() {
+        if r := recover(); r != nil {
+            t.Errorf("The copy did panic")
+        }
+    }()
+
+	ts := &TypeStruct1 {
+		Field1: "str1",
+		Field2: "str2",
+	}
+
+	ts3 := &TypeStruct3 {}
+
+	Copy(ts3, ts)
+
+	if v, ok := ts3.Field1.(string); !ok {
+		t.Error("Assign to interface{} type did not succeed")
+	} else if v != "str1" {
+		t.Error("String haven't been copied correctly")
+	}
+}
+
+func TestAssignableTypeMethod(t *testing.T) {
+    defer func() {
+        if r := recover(); r != nil {
+            t.Errorf("The copy did panic")
+        }
+    }()
+
+	ts := &TypeStruct1 {
+		Field1: "str1",
+		Field2: "str2",
+	}
+
+	ts5 := &TypeStruct5 {}
+
+	Copy(ts5, ts)
+
+
+	if ts5.field1 != "str1" {
+		t.Error("String haven't been copied correctly through method")
 	}
 }
 
