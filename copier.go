@@ -67,11 +67,18 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 				fromField := source.FieldByName(name)
 				toField := dest.FieldByName(name)
 				toMethod := dest.Addr().MethodByName(name)
-				if fromField.IsValid() && toField.IsValid() && toField.CanSet() {
+
+				canCopy := 	fromField.IsValid() && toField.IsValid() &&
+							toField.CanSet() && fromField.Type().AssignableTo(toField.Type())
+
+				if canCopy {
 					toField.Set(fromField)
 				}
 
-				if fromField.IsValid() && toMethod.IsValid() {
+				canCopy = 	fromField.IsValid() && toMethod.IsValid() &&
+							fromField.Type().AssignableTo(toMethod.Type().In(0))
+
+				if canCopy {
 					toMethod.Call([]reflect.Value{fromField})
 				}
 			}
