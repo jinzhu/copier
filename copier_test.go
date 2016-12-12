@@ -42,28 +42,34 @@ type HaveEmbed struct {
 }
 
 type TypeStruct1 struct {
-	Field1 	string
-	Field2  string
+	Field1 string
+	Field2 string
+	Field3 TypeStruct2
+	Field4 *TypeStruct2
+	Field5 []*TypeStruct2
 }
 
 type TypeStruct2 struct {
-	Field1 	int
-	Field2  string
+	Field1 int
+	Field2 string
 }
 
 type TypeStruct3 struct {
-	Field1 	interface{}
-	Field2  string
+	Field1 interface{}
+	Field2 string
+	Field3 TypeStruct4
+	Field4 *TypeStruct4
+	Field5 []*TypeStruct4
 }
 
 type TypeStruct4 struct {
-	field1 	int
-	Field2  string
+	field1 int
+	Field2 string
 }
 
 type TypeStruct5 struct {
-	field1 	string
-	Field2  string
+	field1 string
+	Field2 string
 }
 
 func (t *TypeStruct4) Field1(i int) {
@@ -89,85 +95,167 @@ func TestEmbedded(t *testing.T) {
 	embeded.EmbedField2 = 4
 
 	Copy(&base, &embeded)
-	
+
 	if base.BaseField1 != 1 {
 		t.Error("Embedded fields not copied")
 	}
 }
 
 func TestDifferentType(t *testing.T) {
-    defer func() {
-        if r := recover(); r != nil {
-            t.Errorf("The copy did panic")
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("The copy did panic")
+		}
+	}()
 
-	ts := &TypeStruct1 {
+	ts := &TypeStruct1{
 		Field1: "str1",
 		Field2: "str2",
 	}
 
-	ts2 := &TypeStruct2 {}
+	ts2 := &TypeStruct2{}
 
 	Copy(ts2, ts)
 }
 
 func TestDifferentTypeMethod(t *testing.T) {
-    defer func() {
-        if r := recover(); r != nil {
-            t.Errorf("The copy did panic")
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("The copy did panic")
+		}
+	}()
 
-	ts := &TypeStruct1 {
+	ts := &TypeStruct1{
 		Field1: "str1",
 		Field2: "str2",
 	}
 
-	ts4 := &TypeStruct4 {}
+	ts4 := &TypeStruct4{}
 
 	Copy(ts4, ts)
 }
 
 func TestAssignableType(t *testing.T) {
-    defer func() {
-        if r := recover(); r != nil {
-            t.Errorf("The copy did panic")
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("The copy did panic")
+		}
+	}()
 
-	ts := &TypeStruct1 {
+	ts := &TypeStruct1{
 		Field1: "str1",
 		Field2: "str2",
+		Field3: TypeStruct2{
+
+			Field1: 666,
+			Field2: "str2",
+		},
+		Field4: &TypeStruct2{
+
+			Field1: 666,
+			Field2: "str2",
+		},
+		Field5: []*TypeStruct2{
+			{
+				Field1: 666,
+				Field2: "str2",
+			},
+		},
 	}
 
-	ts3 := &TypeStruct3 {}
+	ts3 := &TypeStruct3{}
 
-	Copy(ts3, ts)
+	Copy(&ts3, &ts)
 
 	if v, ok := ts3.Field1.(string); !ok {
 		t.Error("Assign to interface{} type did not succeed")
 	} else if v != "str1" {
 		t.Error("String haven't been copied correctly")
 	}
+
+	if ts3.Field4 == nil {
+		t.Error("nil Field4")
+	} else if ts3.Field4.Field2 != ts.Field4.Field2 {
+		t.Errorf("Field4 differs %v", ts3.Field4)
+	}
+}
+
+func TestPointerArray(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("The copy did panic")
+		}
+	}()
+
+	ts := []*TypeStruct1{
+		{
+			Field1: "str1",
+			Field2: "str2",
+			Field3: TypeStruct2{
+
+				Field1: 666,
+				Field2: "str2",
+			},
+			Field4: &TypeStruct2{
+
+				Field1: 666,
+				Field2: "str2",
+			},
+			Field5: []*TypeStruct2{
+				{
+					Field1: 666,
+					Field2: "str2",
+				},
+			},
+		},
+	}
+
+	ts3 := []*TypeStruct3{}
+
+	Copy(&ts3, &ts)
+
+	for i := range ts {
+		if v, ok := ts3[i].Field1.(string); !ok {
+			t.Error("Assign to interface{} type did not succeed")
+		} else if v != "str1" {
+			t.Error("String haven't been copied correctly")
+		}
+
+		if ts3[i].Field2 != ts[i].Field2 {
+			t.Error("String haven't been copied correctly")
+		}
+
+		if ts3[i].Field3.Field2 != ts[i].Field3.Field2 {
+			t.Errorf("String haven't been copied correctly %+v vs %+v", ts3[i].Field3, ts[i].Field3)
+		}
+
+		if ts3[i].Field4 == nil {
+			t.Error("nil Field4")
+		} else if ts3[i].Field4.Field2 != ts[i].Field4.Field2 {
+			t.Errorf("Field4 differs %v", ts3[i].Field4)
+		}
+
+		if len(ts3[i].Field5) != len(ts[i].Field5) {
+			t.Errorf("Field5 size differs %v and %v", len(ts3[i].Field5), len(ts[i].Field5))
+		}
+	}
 }
 
 func TestAssignableTypeMethod(t *testing.T) {
-    defer func() {
-        if r := recover(); r != nil {
-            t.Errorf("The copy did panic")
-        }
-    }()
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("The copy did panic")
+		}
+	}()
 
-	ts := &TypeStruct1 {
+	ts := &TypeStruct1{
 		Field1: "str1",
 		Field2: "str2",
 	}
 
-	ts5 := &TypeStruct5 {}
+	ts5 := &TypeStruct5{}
 
 	Copy(ts5, ts)
-
 
 	if ts5.field1 != "str1" {
 		t.Error("String haven't been copied correctly through method")
