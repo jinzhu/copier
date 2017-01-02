@@ -1,19 +1,21 @@
 # Copier
 
-  I am a copier, I copy everything from a struct to another struct
+  I am a copier, I copy everything from one to another
+
+[![http://patreon.com/jinzhu](http://patreon_public_assets.s3.amazonaws.com/sized/becomeAPatronBanner.png)](http://patreon.com/jinzhu)
 
 ## Features
 
-* Copy field to field if name exactly match
-* Copy from method to field if method name and field name exactly match
-* Copy from field to method if field name and method name exactly match
-* Copy slice to slice
-* Copy struct to slice
+* Copy struct's field to field if its name match
+* Copy from method to field if its name match
+* Copy from field to method if its name match
+* Copy from slice to slice
+* Copy from struct to slice
 
 ## Usage
 
 ```go
-import . "github.com/jinzhu/copier"
+import "github.com/jinzhu/copier"
 
 type User struct {
 	Name string
@@ -37,11 +39,12 @@ func (employee *Employee) Role(role string) {
 	employee.SuperRule = "Super " + role
 }
 
-user := User{Name: "Jinzhu", Age: 18, Role: "Admin"}
-employee := Employee{}
+var (
+  user     = User{Name: "Jinzhu", Age: 18, Role: "Admin"}
+  employee = Employee{}
+)
 
-Copy(&employee, &user)
-
+coper.Copy(&employee, &user)
 // employee => Employee{ Name: "Jinzhu",           // Copy from field
 //                       Age: 18,                  // Copy from field
 //                       DoubleAge: 36,            // Copy from method
@@ -50,17 +53,22 @@ Copy(&employee, &user)
 //                      }
 
 // Copy struct to slice
-user := User{Name: "hello", Age: 18, Role: "User"}
-employees := []Employee{}
-Copy(&employees, &user)
+var (
+  user      = User{Name: "hello", Age: 18, Role: "User"}
+  employees = []Employee{}
+)
+
+coper.Copy(&employees, &user)
 // employees => [{hello 18 0 36 Super User}]
 
 
 // Copy slice to slice
-users := []User{{Name: "Jinzhu", Age: 18, Role: "Admin"}, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
-employees := []Employee{}
-Copy(&employees, &users)
+var (
+  users     = []User{{Name: "Jinzhu", Age: 18, Role: "Admin"}, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
+  employees = []Employee{}
+)
 
+coper.Copy(&employees, &users)
 // employees => [{hello 18 0 36 Super User} {Jinzhu 18 0 36 Super Admin} {jinzhu 2 30 0 60 Super Dev}]
 ```
 
