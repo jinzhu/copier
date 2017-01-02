@@ -2,8 +2,6 @@
 
   I am a copier, I copy everything from one to another
 
-[![http://patreon.com/jinzhu](http://patreon_public_assets.s3.amazonaws.com/sized/becomeAPatronBanner.png)](http://patreon.com/jinzhu)
-
 ## Features
 
 * Copy struct's field to field if its name match
@@ -71,6 +69,10 @@ var (
 coper.Copy(&employees, &users)
 // employees => [{hello 18 0 36 Super User} {Jinzhu 18 0 36 Super Admin} {jinzhu 2 30 0 60 Super Dev}]
 ```
+
+# Supporting the project
+
+[![http://patreon.com/jinzhu](http://patreon_public_assets.s3.amazonaws.com/sized/becomeAPatronBanner.png)](http://patreon.com/jinzhu)
 
 # Author
 
