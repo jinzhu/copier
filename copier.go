@@ -2,9 +2,11 @@ package copier
 
 import (
 	"database/sql"
+	"errors"
 	"reflect"
 )
 
+// Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
 		isSlice bool
@@ -12,6 +14,10 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		from    = indirect(reflect.ValueOf(fromValue))
 		to      = indirect(reflect.ValueOf(toValue))
 	)
+
+	if !to.CanAddr() {
+		return errors.New("copy to value is unaddressable")
+	}
 
 	// Return is from value is invalid
 	if !from.IsValid() {
@@ -146,21 +152,23 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 }
 
 func set(to, from reflect.Value) bool {
-	if to.Kind() == reflect.Ptr {
-		if to.IsNil() {
-			to.Set(reflect.New(to.Type().Elem()))
+	if from.IsValid() {
+		if to.Kind() == reflect.Ptr {
+			if to.IsNil() {
+				to.Set(reflect.New(to.Type().Elem()))
+			}
+			to = to.Elem()
 		}
-		to = to.Elem()
-	}
 
-	if from.Type().ConvertibleTo(to.Type()) {
-		to.Set(from.Convert(to.Type()))
-	} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
-		scanner.Scan(from.Interface())
-	} else if from.Kind() == reflect.Ptr {
-		return set(to, from.Elem())
-	} else {
-		return false
+		if from.Type().ConvertibleTo(to.Type()) {
+			to.Set(from.Convert(to.Type()))
+		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+			scanner.Scan(from.Interface())
+		} else if from.Kind() == reflect.Ptr {
+			return set(to, from.Elem())
+		} else {
+			return false
+		}
 	}
 	return true
 }
