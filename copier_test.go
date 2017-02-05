@@ -16,7 +16,7 @@ type User struct {
 	flags []byte
 }
 
-func (user *User) DoubleAge() int32 {
+func (user User) DoubleAge() int32 {
 	return 2 * user.Age
 }
 
@@ -291,7 +291,7 @@ func TestDifferentTypeMethod(t *testing.T) {
 func TestAssignableType(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			t.Errorf("The copy did panic")
+			t.Errorf("The copy did panic: %v", r)
 		}
 	}()
 
@@ -299,12 +299,10 @@ func TestAssignableType(t *testing.T) {
 		Field1: "str1",
 		Field2: "str2",
 		Field3: TypeStruct2{
-
 			Field1: 666,
 			Field2: "str2",
 		},
 		Field4: &TypeStruct2{
-
 			Field1: 666,
 			Field2: "str2",
 		},
@@ -336,7 +334,7 @@ func TestAssignableType(t *testing.T) {
 func TestPointerArray(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
-			t.Errorf("The copy did panic")
+			t.Errorf("The copy did panic: %v", r)
 		}
 	}()
 

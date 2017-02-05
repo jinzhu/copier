@@ -4,94 +4,82 @@ import "reflect"
 
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
-		isSlice   bool
-		fromType  reflect.Type
-		isFromPtr bool
-		toType    reflect.Type
-		isToPtr   bool
-		amount    int
+		isSlice  bool
+		amount   = 1
+		from     = reflect.Indirect(reflect.ValueOf(fromValue))
+		to       = reflect.Indirect(reflect.ValueOf(toValue))
+		fromType = indirectType(from.Type())
+		toType   = indirectType(to.Type())
 	)
-
-	from := reflect.Indirect(reflect.ValueOf(fromValue))
-	to := reflect.Indirect(reflect.ValueOf(toValue))
 
 	if to.Kind() == reflect.Slice {
 		isSlice = true
 		if from.Kind() == reflect.Slice {
-			fromType = from.Type().Elem()
-			if fromType.Kind() == reflect.Ptr {
-				fromType = fromType.Elem()
-				isFromPtr = true
-			}
 			amount = from.Len()
-		} else {
-			fromType = from.Type()
-			amount = 1
 		}
-
-		toType = to.Type().Elem()
-		if toType.Kind() == reflect.Ptr {
-			toType = toType.Elem()
-			isToPtr = true
-		}
-	} else {
-		fromType = from.Type()
-		toType = to.Type()
-		amount = 1
 	}
 
-	for e := 0; e < amount; e++ {
+	for i := 0; i < amount; i++ {
 		var dest, source reflect.Value
+
 		if isSlice {
+			// source
 			if from.Kind() == reflect.Slice {
-				source = from.Index(e)
-				if isFromPtr {
-					source = source.Elem()
-				}
+				source = indirect(from.Index(i))
 			} else {
-				source = from
+				source = indirect(from)
 			}
+
+			// dest
+			dest = indirect(reflect.New(toType).Elem())
 		} else {
-			source = from
+			source = indirect(from)
+			dest = indirect(to)
 		}
 
-		if isSlice {
-			dest = reflect.New(toType).Elem()
-		} else {
-			dest = to
-		}
-
+		// Copy from field to field or method
 		for _, field := range deepFields(fromType) {
-			if !field.Anonymous {
-				name := field.Name
-				fromField := source.FieldByName(name)
-				toField := dest.FieldByName(name)
-				toMethod := dest.Addr().MethodByName(name)
+			name := field.Name
 
-				canCopy := fromField.IsValid() && toField.IsValid() &&
-					toField.CanSet() && fromField.Type().AssignableTo(toField.Type())
+			if fromField := source.FieldByName(name); fromField.IsValid() {
+				// has field
+				if toField := dest.FieldByName(name); toField.IsValid() {
+					if toField.CanSet() {
+						if fromField.Type().AssignableTo(toField.Type()) {
+							toField.Set(fromField)
+						} else {
+							Copy(toField.Addr().Interface(), fromField.Interface())
+						}
+					}
+				} else {
+					// try to set to method
+					var toMethod reflect.Value
+					if dest.CanAddr() {
+						toMethod = dest.Addr().MethodByName(name)
+					} else {
+						toMethod = dest.MethodByName(name)
+					}
 
-				if canCopy {
-					toField.Set(fromField)
-				}
-
-				canCopy = fromField.IsValid() && toMethod.IsValid() &&
-					fromField.Type().AssignableTo(toMethod.Type().In(0))
-
-				if canCopy {
-					toMethod.Call([]reflect.Value{fromField})
+					if toMethod.IsValid() && toMethod.Type().NumIn() == 1 && fromField.Type().AssignableTo(toMethod.Type().In(0)) {
+						toMethod.Call([]reflect.Value{fromField})
+					}
 				}
 			}
 		}
 
-		for i := 0; i < toType.NumField(); i++ {
-			field := toType.Field(i)
-			if !field.Anonymous {
-				name := field.Name
-				fromMethod := source.MethodByName(name)
-				toField := dest.FieldByName(name)
+		// Copy from method to field
+		for _, field := range deepFields(toType) {
+			name := field.Name
 
-				if fromMethod.IsValid() && toField.IsValid() && toField.CanSet() {
+			var fromMethod reflect.Value
+			if source.CanAddr() {
+				fromMethod = source.Addr().MethodByName(name)
+			} else {
+				fromMethod = source.MethodByName(name)
+			}
+
+			if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 {
+				if toField := dest.FieldByName(name); toField.IsValid() && toField.CanSet() {
 					values := fromMethod.Call([]reflect.Value{})
 					if len(values) >= 1 {
 						toField.Set(values[0])
@@ -101,9 +89,9 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		}
 
 		if isSlice {
-			if isToPtr {
+			if dest.Addr().Type().AssignableTo(to.Type().Elem()) {
 				to.Set(reflect.Append(to, dest.Addr()))
-			} else {
+			} else if dest.Type().AssignableTo(to.Type().Elem()) {
 				to.Set(reflect.Append(to, dest))
 			}
 		}
@@ -111,17 +99,33 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	return
 }
 
-func deepFields(ifaceType reflect.Type) []reflect.StructField {
+func deepFields(reflectType reflect.Type) []reflect.StructField {
 	var fields []reflect.StructField
 
-	for i := 0; i < ifaceType.NumField(); i++ {
-		v := ifaceType.Field(i)
-		if v.Anonymous && v.Type.Kind() == reflect.Struct {
-			fields = append(fields, deepFields(v.Type)...)
-		} else {
-			fields = append(fields, v)
+	if reflectType = indirectType(reflectType); reflectType.Kind() == reflect.Struct {
+		for i := 0; i < reflectType.NumField(); i++ {
+			v := reflectType.Field(i)
+			if v.Anonymous {
+				fields = append(fields, deepFields(v.Type)...)
+			} else {
+				fields = append(fields, v)
+			}
 		}
 	}
 
 	return fields
+}
+
+func indirect(reflectValue reflect.Value) reflect.Value {
+	for reflectValue.Kind() == reflect.Ptr {
+		reflectValue = reflectValue.Elem()
+	}
+	return reflectValue
+}
+
+func indirectType(reflectType reflect.Type) reflect.Type {
+	for reflectType.Kind() == reflect.Ptr || reflectType.Kind() == reflect.Slice {
+		reflectType = reflectType.Elem()
+	}
+	return reflectType
 }
