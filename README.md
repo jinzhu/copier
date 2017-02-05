@@ -13,7 +13,12 @@
 ## Usage
 
 ```go
-import "github.com/jinzhu/copier"
+package main
+
+import (
+	"fmt"
+	"github.com/jinzhu/copier"
+)
 
 type User struct {
 	Name string
@@ -37,37 +42,43 @@ func (employee *Employee) Role(role string) {
 	employee.SuperRule = "Super " + role
 }
 
-var (
-  user     = User{Name: "Jinzhu", Age: 18, Role: "Admin"}
-  employee = Employee{}
-)
+func main() {
+	var (
+		user      = User{Name: "Jinzhu", Age: 18, Role: "Admin"}
+		users     = []User{{Name: "Jinzhu", Age: 18, Role: "Admin"}, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
+		employee  = Employee{}
+		employees = []Employee{}
+	)
 
-coper.Copy(&employee, &user)
-// employee => Employee{ Name: "Jinzhu",           // Copy from field
-//                       Age: 18,                  // Copy from field
-//                       DoubleAge: 36,            // Copy from method
-//                       EmployeeId: 0,            // Just ignored
-//                       SuperRule: "Super Admin", // Copy to method
-//                      }
+	copier.Copy(&employee, &user)
 
-// Copy struct to slice
-var (
-  user      = User{Name: "hello", Age: 18, Role: "User"}
-  employees = []Employee{}
-)
+	fmt.Printf("%#v \n", employee)
+	// Employee{
+	//    Name: "Jinzhu",           // Copy from field
+	//    Age: 18,                  // Copy from field
+	//    DoubleAge: 36,            // Copy from method
+	//    EmployeeId: 0,            // Ignored
+	//    SuperRule: "Super Admin", // Copy to method
+	// }
 
-coper.Copy(&employees, &user)
-// employees => [{hello 18 0 36 Super User}]
+	// Copy struct to slice
+	copier.Copy(&employees, &user)
 
+	fmt.Printf("%#v \n", employees)
+	// []Employee{
+	//   {Name: "Jinzhu", Age: 18, DoubleAge: 36, EmployeId: 0, SuperRule: "Super Admin"}
+	// }
 
-// Copy slice to slice
-var (
-  users     = []User{{Name: "Jinzhu", Age: 18, Role: "Admin"}, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
-  employees = []Employee{}
-)
+	// Copy slice to slice
+	employees = []Employee{}
+	copier.Copy(&employees, &users)
 
-coper.Copy(&employees, &users)
-// employees => [{hello 18 0 36 Super User} {Jinzhu 18 0 36 Super Admin} {jinzhu 2 30 0 60 Super Dev}]
+	fmt.Printf("%#v \n", employees)
+	// []Employee{
+	//   {Name: "Jinzhu", Age: 18, DoubleAge: 36, EmployeId: 0, SuperRule: "Super Admin"},
+	//   {Name: "jinzhu 2", Age: 30, DoubleAge: 60, EmployeId: 0, SuperRule: "Super Dev"},
+	// }
+}
 ```
 
 # Supporting the project
