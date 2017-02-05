@@ -2,18 +2,22 @@ package copier_test
 
 import (
 	"encoding/json"
+	"fmt"
 	"reflect"
+	"runtime/debug"
 	"testing"
 
 	"github.com/jinzhu/copier"
 )
 
 type User struct {
-	Name  string
-	Role  string
-	Age   int32
-	Notes []string
-	flags []byte
+	Name     string
+	Nickname string
+	Role     string
+	Age      int32
+	FakeAge  *int32
+	Notes    []string
+	flags    []byte
 }
 
 func (user User) DoubleAge() int32 {
@@ -22,7 +26,9 @@ func (user User) DoubleAge() int32 {
 
 type Employee struct {
 	Name      string
-	Age       int32
+	Nickname  *string
+	Age       int64
+	FakeAge   int
 	EmployeID int64
 	DoubleAge int32
 	SuperRule string
@@ -38,8 +44,16 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	if employee.Name != user.Name {
 		t.Errorf("%v: Name haven't been copied correctly.", testCase)
 	}
-	if employee.Age != user.Age {
+	if employee.Nickname == nil || *employee.Nickname != user.Nickname {
+		t.Errorf("%v: NickName haven't been copied correctly.", testCase)
+	}
+	if employee.Age != int64(user.Age) {
 		t.Errorf("%v: Age haven't been copied correctly.", testCase)
+	}
+	if user.FakeAge != nil && employee.FakeAge != int(*user.FakeAge) {
+		fmt.Println(employee.FakeAge)
+		fmt.Println(*user.FakeAge)
+		t.Errorf("%v: FakeAge haven't been copied correctly.", testCase)
 	}
 	if employee.DoubleAge != user.DoubleAge() {
 		t.Errorf("%v: Copy from method doesn't work", testCase)
@@ -53,7 +67,8 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 }
 
 func TestCopyStruct(t *testing.T) {
-	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
+	var fakeAge int32 = 12
+	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
 	employee := Employee{}
 
 	copier.Copy(&employee, &user)
@@ -62,6 +77,15 @@ func TestCopyStruct(t *testing.T) {
 	employee2 := Employee{}
 	copier.Copy(&employee2, user)
 	checkEmployee(employee2, user, t, "Copy From Struct To Ptr")
+
+	employee3 := Employee{}
+	ptrToUser := &user
+	copier.Copy(&employee3, &ptrToUser)
+	checkEmployee(employee3, user, t, "Copy From Double Ptr To Ptr")
+
+	employee4 := &Employee{}
+	copier.Copy(&employee4, user)
+	checkEmployee(*employee4, user, t, "Copy From Ptr To Double Ptr")
 }
 
 func TestCopySlice(t *testing.T) {
@@ -291,6 +315,7 @@ func TestDifferentTypeMethod(t *testing.T) {
 func TestAssignableType(t *testing.T) {
 	defer func() {
 		if r := recover(); r != nil {
+			debug.PrintStack()
 			t.Errorf("The copy did panic: %v", r)
 		}
 	}()
@@ -424,7 +449,7 @@ func BenchmarkNamaCopy(b *testing.B) {
 	for x := 0; x < b.N; x++ {
 		employee := &Employee{
 			Name:      user.Name,
-			Age:       user.Age,
+			Age:       int64(user.Age),
 			DoubleAge: user.DoubleAge(),
 			Notes:     user.Notes,
 		}

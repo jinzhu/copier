@@ -1,16 +1,31 @@
 package copier
 
-import "reflect"
+import (
+	"database/sql"
+	"reflect"
+)
 
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
-		isSlice  bool
-		amount   = 1
-		from     = reflect.Indirect(reflect.ValueOf(fromValue))
-		to       = reflect.Indirect(reflect.ValueOf(toValue))
-		fromType = indirectType(from.Type())
-		toType   = indirectType(to.Type())
+		isSlice bool
+		amount  = 1
+		from    = indirect(reflect.ValueOf(fromValue))
+		to      = indirect(reflect.ValueOf(toValue))
 	)
+
+	// Return is from value is invalid
+	if !from.IsValid() {
+		return
+	}
+
+	// Just set it if possible to assign
+	if from.Type().AssignableTo(to.Type()) {
+		to.Set(from)
+		return
+	}
+
+	fromType := indirectType(from.Type())
+	toType := indirectType(to.Type())
 
 	if to.Kind() == reflect.Slice {
 		isSlice = true
@@ -45,10 +60,10 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 				// has field
 				if toField := dest.FieldByName(name); toField.IsValid() {
 					if toField.CanSet() {
-						if fromField.Type().AssignableTo(toField.Type()) {
-							toField.Set(fromField)
-						} else {
-							Copy(toField.Addr().Interface(), fromField.Interface())
+						if !set(toField, fromField) {
+							if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
+								return err
+							}
 						}
 					}
 				} else {
@@ -82,7 +97,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 				if toField := dest.FieldByName(name); toField.IsValid() && toField.CanSet() {
 					values := fromMethod.Call([]reflect.Value{})
 					if len(values) >= 1 {
-						toField.Set(values[0])
+						set(toField, values[0])
 					}
 				}
 			}
@@ -128,4 +143,24 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 		reflectType = reflectType.Elem()
 	}
 	return reflectType
+}
+
+func set(to, from reflect.Value) bool {
+	if to.Kind() == reflect.Ptr {
+		if to.IsNil() {
+			to.Set(reflect.New(to.Type().Elem()))
+		}
+		to = to.Elem()
+	}
+
+	if from.Type().ConvertibleTo(to.Type()) {
+		to.Set(from.Convert(to.Type()))
+	} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+		scanner.Scan(from.Interface())
+	} else if from.Kind() == reflect.Ptr {
+		return set(to, from.Elem())
+	} else {
+		return false
+	}
+	return true
 }
