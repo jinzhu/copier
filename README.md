@@ -4,9 +4,9 @@
 
 ## Features
 
-* Copy struct's field to field if its name match
-* Copy from method to field if its name match
-* Copy from field to method if its name match
+* Copy from field to field with same name
+* Copy from method to field with same name
+* Copy from field to method with same name
 * Copy from slice to slice
 * Copy from struct to slice
 
