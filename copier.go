@@ -4,8 +4,11 @@ import (
 	"database/sql"
 	"errors"
 	"reflect"
+	"fmt"
+	"time"
 )
 
+var _ignore = fmt.Sprint("")
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
@@ -57,11 +60,11 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 			source = indirect(from)
 			dest = indirect(to)
 		}
-
+		fromTypeFields := deepFields(fromType)
+		//fmt.Printf("%#v", fromTypeFields)
 		// Copy from field to field or method
-		for _, field := range deepFields(fromType) {
+		for _, field := range fromTypeFields {
 			name := field.Name
-
 			if fromField := source.FieldByName(name); fromField.IsValid() {
 				// has field
 				if toField := dest.FieldByName(name); toField.IsValid() {
@@ -166,7 +169,16 @@ func set(to, from reflect.Value) bool {
 			scanner.Scan(from.Interface())
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem())
+		} else if from.Type().Name() == "int64" && to.Type().Name() == "Time" {
+			//int64 to time.Time
+			// default is second
+			t := time.Unix(from.Int(), 0)
+			to.Set(reflect.ValueOf(t))
+		} else if to.Type().Name() == "int64" && from.Type().Name() == "Time" {
+			//time.Time to int64
+			to.SetInt(from.Interface().(time.Time).Unix())
 		} else {
+			//fmt.Printf("to=%s, from=%s", to.Type().Name(), from.Type().Name())
 			return false
 		}
 	}
