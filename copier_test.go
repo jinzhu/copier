@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/jinzhu/copier"
+	"time"
 )
 
 type User struct {
@@ -185,5 +186,31 @@ func TestEmbedded(t *testing.T) {
 
 	if base.BaseField1 != 1 {
 		t.Error("Embedded fields not copied")
+	}
+}
+
+func TestMismatchedStructToSimple(t *testing.T) {
+	// Types don't match.  Nothing should be copied to the mismatched field, but it should not panic.
+	type From struct {
+		Tmp  time.Time
+		Safe int64
+	}
+
+	type To struct {
+		Tmp  string
+		Safe int64
+	}
+
+	from := From{}
+	from.Tmp = time.Now()
+	from.Safe = 1
+	to := To{}
+	copier.Copy(&to, &from)
+
+	if to.Tmp != "" {
+		t.Error("Simple string field populated from complex data type incorrectly.")
+	}
+	if to.Safe != 1 {
+		t.Error("Simple integer field did not copy correctly.")
 	}
 }

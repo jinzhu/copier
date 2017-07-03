@@ -64,15 +64,21 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 
 			if fromField := source.FieldByName(name); fromField.IsValid() {
 				// has field
-				if toField := dest.FieldByName(name); toField.IsValid() {
-					if toField.CanSet() {
-						if !set(toField, fromField) {
-							if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
-								return err
+				triedTo := false
+				if dest.Kind() == reflect.Struct {
+					if toField := dest.FieldByName(name); toField.IsValid() {
+						triedTo = true
+						if toField.CanSet() {
+							if !set(toField, fromField) {
+								if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
+									return err
+								}
 							}
 						}
 					}
-				} else {
+				}
+
+				if !triedTo {
 					// try to set to method
 					var toMethod reflect.Value
 					if dest.CanAddr() {
