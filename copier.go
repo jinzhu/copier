@@ -166,9 +166,7 @@ func set(to, from reflect.Value) bool {
 				return true
 			}
 			return set(to, from.Elem())
-		}
-
-		if from.Type() == to.Type() {
+		} else if from.Type() == to.Type() {
 			to.Set(from)
 		} else if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
