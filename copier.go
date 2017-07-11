@@ -160,12 +160,20 @@ func set(to, from reflect.Value) bool {
 			to = to.Elem()
 		}
 
-		if from.Type().ConvertibleTo(to.Type()) {
+		if from.Kind() == reflect.Ptr {
+			if from.IsNil() {
+				// ignoring nil
+				return true
+			}
+			return set(to, from.Elem())
+		}
+
+		if from.Type() == to.Type() {
+			to.Set(from)
+		} else if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
 		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
 			scanner.Scan(from.Interface())
-		} else if from.Kind() == reflect.Ptr {
-			return set(to, from.Elem())
 		} else {
 			return false
 		}
