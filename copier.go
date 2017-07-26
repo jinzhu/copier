@@ -5,6 +5,7 @@ import (
 	"errors"
 	"reflect"
 )
+// Changes for sql.Null* types are borrowed from github.com/ulule/deepcopier
 
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
@@ -61,6 +62,10 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		// Copy from field to field or method
 		for _, field := range deepFields(fromType) {
 			name := field.Name
+			//Bypass sql.Null* field props
+			if name == "Int64" || name == "Valid" || name == "String" || name == "Float64" {
+				continue
+			} 
 
 			if fromField := source.FieldByName(name); fromField.IsValid() {
 				// has field
@@ -151,13 +156,44 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 	return reflectType
 }
 
+func isNullableType(t reflect.Type) bool {
+	return t.ConvertibleTo(reflect.TypeOf((*driver.Valuer)(nil)).Elem())
+}
+
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
+			if isNullableType(from.Type()) {
+				v, _ := from.Interface().(driver.Valuer).Value()
+				if v != nil {
+
+					valueType := reflect.TypeOf(v)
+
+					ptr := reflect.New(valueType)
+					ptr.Elem().Set(reflect.ValueOf(v))
+
+					if valueType.AssignableTo(to.Type().Elem()) {
+						to.Set(ptr)
+						return true
+					}
+				}
+			}
 			if to.IsNil() {
 				to.Set(reflect.New(to.Type().Elem()))
 			}
 			to = to.Elem()
+		} else {
+			if isNullableType(from.Type()) {
+				v, _ := from.Interface().(driver.Valuer).Value()
+				if v != nil {
+
+					rv := reflect.ValueOf(v)
+					if rv.Type().AssignableTo(to.Type()) {
+						to.Set(rv)
+						return true
+					}
+				}
+			}
 		}
 
 		if from.Type().ConvertibleTo(to.Type()) {
