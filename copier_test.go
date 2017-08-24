@@ -1,6 +1,7 @@
 package copier_test
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -89,7 +90,7 @@ func TestCopyStruct(t *testing.T) {
 }
 
 func TestCopyFromStructToSlice(t *testing.T) {
-	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
+	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
 	employees := []Employee{}
 
 	if err := copier.Copy(employees, &user); err != nil && len(employees) != 0 {
@@ -125,7 +126,7 @@ func TestCopyFromStructToSlice(t *testing.T) {
 }
 
 func TestCopyFromSliceToSlice(t *testing.T) {
-	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
+	users := []User{User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, User{Name: "Jinzhu2", Nickname: "jinzhu", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -208,5 +209,118 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
+	}
+}
+
+type A struct {
+	S       *string
+	Control string
+}
+
+type B struct {
+	S       string
+	Control string
+}
+
+type C struct {
+	S       *string
+	Control string
+}
+
+func TestEmptyValue(t *testing.T) {
+	b := &B{"", "foo"}
+	a := &A{}
+	copier.Copy(a, b)
+
+	if a.Control != "foo" {
+		t.Error("Incorrectly copied string")
+	} else if a.S != nil {
+		t.Error("Copied empty value field to pointer")
+	}
+}
+
+func TestNilPtoNiLP(t *testing.T) {
+	a := &A{}
+	c := &C{}
+	copier.Copy(a, c)
+	if a.S != nil {
+		t.Error("Did not copy nil pointer correctly")
+	}
+}
+
+func TestNilMap(t *testing.T) {
+	type Z struct {
+		M map[string]int
+		S string
+	}
+	type Y struct {
+		M map[string]int
+		S string
+	}
+	z := &Z{nil, "foo"}
+	y := &Y{}
+
+	copier.Copy(y, z)
+	if y.S != "foo" {
+		t.Error("Unable to copy string")
+	} else if y.M != nil {
+		t.Error("Uncorrectly copied zero value of map")
+	}
+
+}
+
+func TestNilSlice(t *testing.T) {
+	type Z struct {
+		Slice []string
+		S     string
+	}
+	type Y struct {
+		Slice []string
+		S     string
+	}
+	z := &Z{nil, "foo"}
+	y := &Y{}
+
+	copier.Copy(y, z)
+	if y.S != "foo" {
+		t.Error("Unable to copy string")
+	} else if y.Slice != nil {
+		t.Error("Uncorrectly copied zero value of slice")
+	}
+}
+
+type ScannerType struct {
+	S string
+}
+
+func (s *ScannerType) Scan(src interface{}) error {
+	return fmt.Errorf("should not hit this")
+}
+
+func TestDisableScanner(t *testing.T) {
+	a := &ScannerType{}
+	b := &B{S: "foo"}
+	err := copier.Copy(a, b, copier.DisableScanner)
+
+	if err != nil {
+		t.Errorf("called scan when disabled")
+	}
+
+	if a.S != b.S {
+		t.Errorf("Copied string incorrectly on ScannerInterface when scanner was disabled")
+	}
+}
+
+type JSONBType struct {
+	S []byte
+}
+
+func TestScanner(t *testing.T) {
+	a := &ScannerType{}
+	b := &JSONBType{S: []byte("foo")}
+	copier.Copy(a, &b)
+
+	if a.S != "foo" {
+		t.Error("Scanner was not called")
 	}
 }

@@ -6,19 +6,25 @@ import (
 	"reflect"
 )
 
+const (
+	DisableScanner = iota
+)
+
+type CopyOption int
+
 // Copy copy things
-func Copy(toValue interface{}, fromValue interface{}) (err error) {
+func Copy(toValue interface{}, fromValue interface{}, flags ...CopyOption) (err error) {
 	var (
 		isSlice bool
 		amount  = 1
 		from    = indirect(reflect.ValueOf(fromValue))
 		to      = indirect(reflect.ValueOf(toValue))
+		opts    = createOptions(flags)
 	)
 
 	if !to.CanAddr() {
 		return errors.New("copy to value is unaddressable")
 	}
-
 	// Return is from value is invalid
 	if !from.IsValid() {
 		return
@@ -65,12 +71,11 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		// Copy from field to field or method
 		for _, field := range deepFields(fromType) {
 			name := field.Name
-
 			if fromField := source.FieldByName(name); fromField.IsValid() {
 				// has field
 				if toField := dest.FieldByName(name); toField.IsValid() {
 					if toField.CanSet() {
-						if !set(toField, fromField) {
+						if !set(toField, fromField, opts) {
 							if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
 								return err
 							}
@@ -95,7 +100,6 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		// Copy from method to field
 		for _, field := range deepFields(toType) {
 			name := field.Name
-
 			var fromMethod reflect.Value
 			if source.CanAddr() {
 				fromMethod = source.Addr().MethodByName(name)
@@ -155,18 +159,28 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 	return reflectType
 }
 
-func set(to, from reflect.Value) bool {
+func set(to, from reflect.Value, options ...map[CopyOption]bool) bool {
+	opts := make(map[CopyOption]bool)
+	if len(options) != 0 {
+		opts = options[0]
+	}
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
+			// This won't stomp down on TO with a nil value. So if TO is already populated, not sure
+			// want expected behavior is (copy vs merge)
+			if (from.Kind() == reflect.Ptr || from.Kind() == reflect.Map || from.Kind() == reflect.Slice) && from.IsNil() {
+				return true // leave to as Nil
+			} else if from.Type().Comparable() && from.Interface() == reflect.Zero(from.Type()).Interface() {
+				return true // if from is zero valued, leave to pointer as nil
+			}
 			if to.IsNil() {
 				to.Set(reflect.New(to.Type().Elem()))
 			}
 			to = to.Elem()
 		}
-
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
-		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok && !opts[DisableScanner] {
 			scanner.Scan(from.Interface())
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem())
@@ -175,4 +189,12 @@ func set(to, from reflect.Value) bool {
 		}
 	}
 	return true
+}
+
+func createOptions(flags []CopyOption) map[CopyOption]bool {
+	opt := make(map[CopyOption]bool)
+	for _, o := range flags {
+		opt[o] = true
+	}
+	return opt
 }
