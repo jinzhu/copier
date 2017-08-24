@@ -154,6 +154,13 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
+			// This won't stomp down on TO with a nil value. So if TO is already populated, not sure
+			// want expected behavior is (copy vs merge)
+			if (from.Kind() == reflect.Ptr || from.Kind() == reflect.Map || from.Kind() == reflect.Slice) && from.IsNil() {
+				return true // leave to as Nil
+			} else if from.Interface() == reflect.Zero(from.Type()).Interface() {
+				return true // if from is zero valued, leave to pointer as nil
+			}
 			if to.IsNil() {
 				to.Set(reflect.New(to.Type().Elem()))
 			}
