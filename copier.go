@@ -6,6 +6,24 @@ import (
 	"reflect"
 )
 
+const (
+	// Bits or'ed together to control how copy works
+	Cscanner = 1 << iota // If on it will check to see if type implements Scanner
+
+	CstdFlags = Cscanner // By default include scanner,
+)
+
+var (
+	Cflags = CstdFlags
+)
+
+// As more flags are added we will do
+// SetFlags(Cscanner | Cflagb)
+// To disable all flags pass SetFlags(0)
+func SetFlags(i int) {
+	Cflags = i
+}
+
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
@@ -154,15 +172,21 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
+			// This won't stomp down on TO with a nil value. So if TO is already populated, not sure
+			// want expected behavior is (copy vs merge)
+			if (from.Kind() == reflect.Ptr || from.Kind() == reflect.Map || from.Kind() == reflect.Slice) && from.IsNil() {
+				return true // leave to as Nil
+			} else if from.Interface() == reflect.Zero(from.Type()).Interface() {
+				return true // if from is zero valued, leave to pointer as nil
+			}
 			if to.IsNil() {
 				to.Set(reflect.New(to.Type().Elem()))
 			}
 			to = to.Elem()
 		}
-
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
-		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok && (Cflags&Cscanner != 0) {
 			scanner.Scan(from.Interface())
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem())
