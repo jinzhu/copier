@@ -265,3 +265,29 @@ func TestNilSlice(t *testing.T) {
 	}
 
 }
+
+type ScannerType struct {
+	S string
+}
+
+func (s *ScannerType) Scan(src interface{}) error {
+	return fmt.Errorf("should not hit this")
+}
+
+func TestFlags(t *testing.T) {
+	a := &ScannerType{}
+	b := &B{S: "foo"}
+	// Could this cuase issues if cases are ran in parallel?
+	copier.SetFlags(0)
+	err := copier.Copy(a, b)
+	copier.SetFlags(copier.CstdFlags)
+
+	if err != nil {
+		t.Errorf("called scan when disabled")
+	}
+
+	if a.S != b.S {
+		t.Errorf("Copied string incorrectly on ScannerInterface when scanner was disabled")
+	}
+
+}
