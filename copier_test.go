@@ -1,9 +1,9 @@
 package copier_test
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/jinzhu/copier"
 )
@@ -49,8 +49,6 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 		t.Errorf("%v: Age haven't been copied correctly.", testCase)
 	}
 	if user.FakeAge != nil && employee.FakeAge != int(*user.FakeAge) {
-		fmt.Println(employee.FakeAge)
-		fmt.Println(*user.FakeAge)
 		t.Errorf("%v: FakeAge haven't been copied correctly.", testCase)
 	}
 	if employee.DoubleAge != user.DoubleAge() {
@@ -185,5 +183,30 @@ func TestEmbedded(t *testing.T) {
 
 	if base.BaseField1 != 1 {
 		t.Error("Embedded fields not copied")
+	}
+}
+
+type structSameName1 struct {
+	A string
+	B int64
+	C time.Time
+}
+
+type structSameName2 struct {
+	A string
+	B time.Time
+	C int64
+}
+
+func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
+	obj1 := structSameName1{A: "123", B: 2, C: time.Now()}
+	obj2 := &structSameName2{}
+	err := copier.Copy(obj2, &obj1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if obj2.A != obj1.A {
+		t.Errorf("Field A should be copied")
 	}
 }
