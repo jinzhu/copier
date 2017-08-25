@@ -6,19 +6,25 @@ import (
 	"reflect"
 )
 
+const (
+	DisableScanner = iota
+)
+
+type CopyOption int
+
 // Copy copy things
-func Copy(toValue interface{}, fromValue interface{}) (err error) {
+func Copy(toValue interface{}, fromValue interface{}, flags ...CopyOption) (err error) {
 	var (
 		isSlice bool
 		amount  = 1
 		from    = indirect(reflect.ValueOf(fromValue))
 		to      = indirect(reflect.ValueOf(toValue))
+		opts    = createOptions(flags)
 	)
 
 	if !to.CanAddr() {
 		return errors.New("copy to value is unaddressable")
 	}
-
 	// Return is from value is invalid
 	if !from.IsValid() {
 		return
@@ -66,7 +72,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 				// has field
 				if toField := dest.FieldByName(name); toField.IsValid() {
 					if toField.CanSet() {
-						if !set(toField, fromField) {
+						if !set(toField, fromField, opts) {
 							if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
 								return err
 							}
@@ -151,7 +157,11 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 	return reflectType
 }
 
-func set(to, from reflect.Value) bool {
+func set(to, from reflect.Value, options ...map[CopyOption]bool) bool {
+	opts := make(map[CopyOption]bool)
+	if len(options) != 0 {
+		opts = options[0]
+	}
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
 			// This won't stomp down on TO with a nil value. So if TO is already populated, not sure
@@ -166,10 +176,9 @@ func set(to, from reflect.Value) bool {
 			}
 			to = to.Elem()
 		}
-
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
-		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok && !opts[DisableScanner] {
 			scanner.Scan(from.Interface())
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem())
@@ -178,4 +187,12 @@ func set(to, from reflect.Value) bool {
 		}
 	}
 	return true
+}
+
+func createOptions(flags []CopyOption) map[CopyOption]bool {
+	opt := make(map[CopyOption]bool)
+	for _, o := range flags {
+		opt[o] = true
+	}
+	return opt
 }

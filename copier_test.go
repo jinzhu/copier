@@ -263,5 +263,40 @@ func TestNilSlice(t *testing.T) {
 	} else if y.Slice != nil {
 		t.Error("Uncorrectly copied zero value of slice")
 	}
+}
 
+type ScannerType struct {
+	S string
+}
+
+func (s *ScannerType) Scan(src interface{}) error {
+	return fmt.Errorf("should not hit this")
+}
+
+func TestDisableScanner(t *testing.T) {
+	a := &ScannerType{}
+	b := &B{S: "foo"}
+	err := copier.Copy(a, b, copier.DISABLE_SCANNER)
+
+	if err != nil {
+		t.Errorf("called scan when disabled")
+	}
+
+	if a.S != b.S {
+		t.Errorf("Copied string incorrectly on ScannerInterface when scanner was disabled")
+	}
+}
+
+type JSONBType struct {
+	S []byte
+}
+
+func TestScanner(t *testing.T) {
+	a := &ScannerType{}
+	b := &JSONBType{S: []byte("foo")}
+	copier.Copy(a, &b)
+
+	if a.S != "foo" {
+		t.Error("Scanner was not called")
+	}
 }
