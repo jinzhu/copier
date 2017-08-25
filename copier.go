@@ -67,7 +67,6 @@ func Copy(toValue interface{}, fromValue interface{}, flags ...CopyOption) (err 
 		// Copy from field to field or method
 		for _, field := range deepFields(fromType) {
 			name := field.Name
-
 			if fromField := source.FieldByName(name); fromField.IsValid() {
 				// has field
 				if toField := dest.FieldByName(name); toField.IsValid() {
@@ -97,7 +96,6 @@ func Copy(toValue interface{}, fromValue interface{}, flags ...CopyOption) (err 
 		// Copy from method to field
 		for _, field := range deepFields(toType) {
 			name := field.Name
-
 			var fromMethod reflect.Value
 			if source.CanAddr() {
 				fromMethod = source.Addr().MethodByName(name)
@@ -168,7 +166,7 @@ func set(to, from reflect.Value, options ...map[CopyOption]bool) bool {
 			// want expected behavior is (copy vs merge)
 			if (from.Kind() == reflect.Ptr || from.Kind() == reflect.Map || from.Kind() == reflect.Slice) && from.IsNil() {
 				return true // leave to as Nil
-			} else if from.Interface() == reflect.Zero(from.Type()).Interface() {
+			} else if from.Type().Comparable() && from.Interface() == reflect.Zero(from.Type()).Interface() {
 				return true // if from is zero valued, leave to pointer as nil
 			}
 			if to.IsNil() {

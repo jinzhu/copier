@@ -276,7 +276,7 @@ func (s *ScannerType) Scan(src interface{}) error {
 func TestDisableScanner(t *testing.T) {
 	a := &ScannerType{}
 	b := &B{S: "foo"}
-	err := copier.Copy(a, b, copier.DISABLE_SCANNER)
+	err := copier.Copy(a, b, copier.DisableScanner)
 
 	if err != nil {
 		t.Errorf("called scan when disabled")
