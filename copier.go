@@ -158,7 +158,11 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
-			if to.IsNil() {
+			//set `to` to nil if from is nil
+			if from.Kind() == reflect.Ptr && from.IsNil() {
+				to.Set(reflect.Zero(to.Type()))
+				return true
+			} else if to.IsNil() {
 				to.Set(reflect.New(to.Type().Elem()))
 			}
 			to = to.Elem()
