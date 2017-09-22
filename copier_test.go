@@ -10,6 +10,7 @@ import (
 
 type User struct {
 	Name     string
+	Birthday *time.Time
 	Nickname string
 	Role     string
 	Age      int32
@@ -24,6 +25,7 @@ func (user User) DoubleAge() int32 {
 
 type Employee struct {
 	Name      string
+	Birthday  *time.Time
 	Nickname  *string
 	Age       int64
 	FakeAge   int
@@ -44,6 +46,12 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	}
 	if employee.Nickname == nil || *employee.Nickname != user.Nickname {
 		t.Errorf("%v: NickName haven't been copied correctly.", testCase)
+	}
+	if employee.Birthday == nil && user.Birthday != nil {
+		t.Errorf("%v: Birthday haven't been copied correctly.", testCase)
+	}
+	if employee.Birthday != nil && user.Birthday == nil {
+		t.Errorf("%v: Birthday haven't been copied correctly.", testCase)
 	}
 	if employee.Age != int64(user.Age) {
 		t.Errorf("%v: Age haven't been copied correctly.", testCase)
