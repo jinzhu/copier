@@ -36,6 +36,10 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	fromType := indirectType(from.Type())
 	toType := indirectType(to.Type())
 
+	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
+		return
+	}
+
 	if to.Kind() == reflect.Slice {
 		isSlice = true
 		if from.Kind() == reflect.Slice {
@@ -157,7 +161,11 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
-			if to.IsNil() {
+			//set `to` to nil if from is nil
+			if from.Kind() == reflect.Ptr && from.IsNil() {
+				to.Set(reflect.Zero(to.Type()))
+				return true
+			} else if to.IsNil() {
 				to.Set(reflect.New(to.Type().Elem()))
 			}
 			to = to.Elem()
