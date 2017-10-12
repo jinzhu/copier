@@ -185,6 +185,16 @@ func set(to, from reflect.Value) bool {
 		} else if to.Type().Name() == "int64" && from.Type().Name() == "Time" {
 			//time.Time to int64
 			to.SetInt(from.Interface().(time.Time).Unix())
+		} else if from.Type().Name() == "string" && to.Type().Name() == "Time" {
+			//string to time.Time
+			//RFC3339
+			t, err := time.Parse(time.RFC3339, from.String())
+			if err == nil {
+				to.Set(reflect.ValueOf(t))
+			}
+		} else if from.Type().Name() == "Time" && to.Type().Name() == "string" {
+			//time.Time to string
+			to.SetString(from.Interface().(time.Time).Format(time.RFC3339))
 		} else {
 			//fmt.Printf("to=%s, from=%s", to.Type().Name(), from.Type().Name())
 			return false

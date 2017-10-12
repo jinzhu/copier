@@ -198,12 +198,16 @@ type structSameName1 struct {
 	A string
 	B int64
 	C time.Time
+	D string
+	E *time.Time
 }
 
 type structSameName2 struct {
 	A string
 	B time.Time
 	C int64
+	D *time.Time
+	E string
 }
 
 func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
@@ -217,4 +221,27 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
 	}
+}
+
+func TestCopyTimeFields(t *testing.T) {
+	nowTime := time.Now()
+	obj1 := structSameName1{A: "123", B: nowTime.Unix(), C: nowTime, D: nowTime.Format(time.RFC3339), E: &nowTime}
+	obj2 := &structSameName2{}
+	err := copier.Copy(obj2, &obj1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+	if obj2.B.Unix() != nowTime.Unix() {
+		t.Error("Should convert unixsecond to time.Time")
+	}
+	if obj2.C != nowTime.Unix() {
+		t.Error("Should convert time.Time to unixsecond")
+	}
+	if obj2.D.Unix() != nowTime.Unix() {
+		t.Error("Should convert string to time.Time")
+	}
+	if obj2.E != nowTime.Format(time.RFC3339) {
+		t.Error("Should convert time.Time to string")
+	}
+	//t.Logf("%#v", obj2)
 }
