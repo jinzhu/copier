@@ -159,8 +159,10 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 }
 
 func set(to, from reflect.Value) bool {
+	var toPtr reflect.Value
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
+			toPtr = to
 			//set `to` to nil if from is nil
 			if from.Kind() == reflect.Ptr && from.IsNil() {
 				to.Set(reflect.Zero(to.Type()))
@@ -188,7 +190,12 @@ func set(to, from reflect.Value) bool {
 		} else if from.Type().Name() == "string" && to.Type().Name() == "Time" {
 			//string to time.Time
 			//RFC3339
-			t, err := time.Parse(time.RFC3339, from.String())
+			timeStr := from.String()
+			if timeStr == "" && toPtr.Kind() == reflect.Ptr { //空为nil
+				toPtr.Set(reflect.Zero(toPtr.Type()))
+				return true
+			}
+			t, err := time.Parse(time.RFC3339, timeStr)
 			if err == nil {
 				to.Set(reflect.ValueOf(t))
 			}
@@ -196,7 +203,7 @@ func set(to, from reflect.Value) bool {
 			//time.Time to string
 			to.SetString(from.Interface().(time.Time).Format(time.RFC3339))
 		} else {
-			//fmt.Printf("to=%s, from=%s", to.Type().Name(), from.Type().Name())
+			//fmt.Printf("to=%s, from=%s\n", to.Type().Name(), from.Type().Name())
 			return false
 		}
 	}

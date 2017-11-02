@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jinzhu/copier"
+	"github.com/stretchr/testify/assert"
 )
 
 type User struct {
@@ -243,5 +244,8 @@ func TestCopyTimeFields(t *testing.T) {
 	if obj2.E != nowTime.Format(time.RFC3339) {
 		t.Error("Should convert time.Time to string")
 	}
+	obj1.D = ""
+	err = copier.Copy(obj2, obj1)
+	assert.Nil(t, obj2.D)
 	//t.Logf("%#v", obj2)
 }
