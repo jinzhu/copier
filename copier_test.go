@@ -1,6 +1,8 @@
 package copier_test
 
 import (
+	"errors"
+
 	"reflect"
 	"testing"
 	"time"
@@ -216,5 +218,40 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
+	}
+}
+
+type ScannerValue struct {
+	V int
+}
+
+func (s *ScannerValue) Scan(src interface{}) error {
+	return errors.New("I failed")
+}
+
+type ScannerStruct struct {
+	V *ScannerValue
+}
+
+type ScannerStructTo struct {
+	V *ScannerValue
+}
+
+func TestScanner(t *testing.T) {
+	s := &ScannerStruct{
+		V: &ScannerValue{
+			V: 12,
+		},
+	}
+
+	s2 := &ScannerStructTo{}
+
+	err := copier.Copy(s2, s)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if s.V.V != s2.V.V {
+		t.Errorf("Field V should be copied")
 	}
 }
