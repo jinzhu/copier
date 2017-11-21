@@ -202,6 +202,10 @@ func set(to, from reflect.Value) bool {
 		} else if from.Type().Name() == "Time" && to.Type().Name() == "string" {
 			//time.Time to string
 			to.SetString(from.Interface().(time.Time).Format(time.RFC3339))
+		//} else if from.Type().Name() == "string" && to.Type().Name() == "ObjectId" {
+		//	to.Set(reflect.ValueOf(bson.ObjectIdHex(from.String())))
+		//} else if from.Type().Name() == "ObjectId" && to.Type().Name() == "string" {
+		//	to.SetString(hex.EncodeToString(from.Bytes()))
 		} else {
 			//fmt.Printf("to=%s, from=%s\n", to.Type().Name(), from.Type().Name())
 			return false
