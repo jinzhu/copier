@@ -71,6 +71,18 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	}
 }
 
+func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string) {
+	if user == nil {
+		if employee.Name != "" || employee.Nickname != nil || employee.Birthday != nil || employee.Age != 0 ||
+			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil {
+			t.Errorf("%v : employee should be empty", testCase)
+		}
+		return
+	}
+
+	checkEmployee(employee, *user, t, testCase)
+}
+
 func TestCopyStruct(t *testing.T) {
 	var fakeAge int32 = 12
 	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
@@ -166,6 +178,42 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 	} else {
 		checkEmployee(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")
 		checkEmployee(*((*employees4)[1]), users[1], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 2")
+	}
+}
+
+func TestCopyFromSliceToSlice2(t *testing.T) {
+	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, nil}
+	employees := []Employee{}
+
+	if copier.Copy(&employees, users); len(employees) != 2 {
+		t.Errorf("Should have two elems when copy slice to slice")
+	} else {
+		checkEmployee2(employees[0], users[0], t, "Copy From Slice To Slice Ptr @ 1")
+		checkEmployee2(employees[1], users[1], t, "Copy From Slice To Slice Ptr @ 2")
+	}
+
+	employees2 := &[]Employee{}
+	if copier.Copy(&employees2, &users); len(*employees2) != 2 {
+		t.Errorf("Should have two elems when copy slice to slice")
+	} else {
+		checkEmployee2((*employees2)[0], users[0], t, "Copy From Slice Ptr To Double Slice Ptr @ 1")
+		checkEmployee2((*employees2)[1], users[1], t, "Copy From Slice Ptr To Double Slice Ptr @ 2")
+	}
+
+	employees3 := []*Employee{}
+	if copier.Copy(&employees3, users); len(employees3) != 2 {
+		t.Errorf("Should have two elems when copy slice to slice")
+	} else {
+		checkEmployee2(*(employees3[0]), users[0], t, "Copy From Slice To Ptr Slice Ptr @ 1")
+		checkEmployee2(*(employees3[1]), users[1], t, "Copy From Slice To Ptr Slice Ptr @ 2")
+	}
+
+	employees4 := &[]*Employee{}
+	if copier.Copy(&employees4, users); len(*employees4) != 2 {
+		t.Errorf("Should have two elems when copy slice to slice")
+	} else {
+		checkEmployee2(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")
+		checkEmployee2(*((*employees4)[1]), users[1], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 2")
 	}
 }
 
