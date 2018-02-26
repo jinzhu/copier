@@ -249,6 +249,7 @@ type structSameName1 struct {
 	C time.Time
 	D string
 	E *time.Time
+	F uint64
 }
 
 type structSameName2 struct {
@@ -257,6 +258,7 @@ type structSameName2 struct {
 	C int64
 	D *time.Time
 	E string
+	F string
 }
 
 func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
@@ -274,7 +276,8 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 func TestCopyTimeFields(t *testing.T) {
 	nowTime := time.Now()
-	obj1 := structSameName1{A: "123", B: nowTime.Unix(), C: nowTime, D: nowTime.Format(time.RFC3339), E: &nowTime}
+	obj1 := structSameName1{A: "123", B: nowTime.Unix(), C: nowTime, D: nowTime.Format(time.RFC3339), E: &nowTime,
+		F: 182288495635601259}
 	obj2 := &structSameName2{}
 	err := copier.Copy(obj2, &obj1)
 	if err != nil {
@@ -291,6 +294,9 @@ func TestCopyTimeFields(t *testing.T) {
 	}
 	if obj2.E != nowTime.Format(time.RFC3339) {
 		t.Error("Should convert time.Time to string")
+	}
+	if obj2.F != "182288495635601259" {
+		t.Error("Should convert uint64 to string")
 	}
 	obj1.D = ""
 	err = copier.Copy(obj2, obj1)

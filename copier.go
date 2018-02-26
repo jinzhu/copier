@@ -174,22 +174,25 @@ func set(to, from reflect.Value) bool {
 			}
 			to = to.Elem()
 		}
-
-		if from.Type().ConvertibleTo(to.Type()) {
+		fromTypeName := from.Type().Name()
+		toTypeName := to.Type().Name()
+		if fromTypeName == "uint64" && toTypeName == "string" {
+			to.SetString(fmt.Sprintf("%d", from.Interface()))
+		} else if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
 		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
 			scanner.Scan(from.Interface())
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem())
-		} else if from.Type().Name() == "int64" && to.Type().Name() == "Time" {
+		} else if fromTypeName == "int64" && toTypeName == "Time" {
 			//int64 to time.Time
 			// default is second
 			t := time.Unix(from.Int(), 0)
 			to.Set(reflect.ValueOf(t))
-		} else if to.Type().Name() == "int64" && from.Type().Name() == "Time" {
+		} else if toTypeName == "int64" && fromTypeName == "Time" {
 			//time.Time to int64
 			to.SetInt(from.Interface().(time.Time).Unix())
-		} else if from.Type().Name() == "string" && to.Type().Name() == "Time" {
+		} else if fromTypeName == "string" && toTypeName == "Time" {
 			//string to time.Time
 			//RFC3339
 			timeStr := from.String()
@@ -201,13 +204,9 @@ func set(to, from reflect.Value) bool {
 			if err == nil {
 				to.Set(reflect.ValueOf(t))
 			}
-		} else if from.Type().Name() == "Time" && to.Type().Name() == "string" {
+		} else if fromTypeName == "Time" && toTypeName == "string" {
 			//time.Time to string
 			to.SetString(from.Interface().(time.Time).Format(time.RFC3339))
-		//} else if from.Type().Name() == "string" && to.Type().Name() == "ObjectId" {
-		//	to.Set(reflect.ValueOf(bson.ObjectIdHex(from.String())))
-		//} else if from.Type().Name() == "ObjectId" && to.Type().Name() == "string" {
-		//	to.SetString(hex.EncodeToString(from.Bytes()))
 		} else {
 			//fmt.Printf("to=%s, from=%s\n", to.Type().Name(), from.Type().Name())
 			return false
