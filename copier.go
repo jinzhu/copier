@@ -171,7 +171,10 @@ func set(to, from reflect.Value) bool {
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
 		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
-			scanner.Scan(from.Interface())
+			err := scanner.Scan(from.Interface())
+			if err != nil {
+				return false
+			}
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem())
 		} else {
