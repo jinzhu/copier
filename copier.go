@@ -24,14 +24,15 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		return
 	}
 
+	fromType := indirectType(from.Type())
+	toType := indirectType(to.Type())
+
 	// Just set it if possible to assign
-	if from.Type().AssignableTo(to.Type()) {
+	// And need to do copy anyway if the type is struct
+	if fromType.Kind() != reflect.Struct && from.Type().AssignableTo(to.Type()) {
 		to.Set(from)
 		return
 	}
-
-	fromType := indirectType(from.Type())
-	toType := indirectType(to.Type())
 
 	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
 		return
