@@ -102,6 +102,21 @@ func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string
 	checkEmployee(employee, *user, t, testCase)
 }
 
+func TestCopySameStructWithPointerField(t *testing.T) {
+	var fakeAge int32 = 12
+	var currentTime time.Time = time.Now()
+	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
+	newUser := &User{}
+	copier.Copy(newUser, user)
+	if user.Birthday == newUser.Birthday {
+		t.Errorf("TestCopySameStructWithPointerField: copy Birthday failed since they need to have different address")
+	}
+
+	if user.FakeAge == newUser.FakeAge {
+		t.Errorf("TestCopySameStructWithPointerField: copy FakeAge failed since they need to have different address")
+	}
+}
+
 func TestCopyStruct(t *testing.T) {
 	var fakeAge int32 = 12
 	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
