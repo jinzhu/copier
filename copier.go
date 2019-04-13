@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-// Copy copy things
+// Copy copies things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
 		isSlice bool
