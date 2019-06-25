@@ -2,7 +2,6 @@ package copier_test
 
 import (
 	"errors"
-
 	"reflect"
 	"testing"
 	"time"
@@ -55,6 +54,10 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	if employee.Birthday != nil && user.Birthday == nil {
 		t.Errorf("%v: Birthday haven't been copied correctly.", testCase)
 	}
+	if employee.Birthday != nil && user.Birthday != nil &&
+		!employee.Birthday.Equal(*(user.Birthday)) {
+		t.Errorf("%v: Birthday haven't been copied correctly.", testCase)
+	}
 	if employee.Age != int64(user.Age) {
 		t.Errorf("%v: Age haven't been copied correctly.", testCase)
 	}
@@ -69,6 +72,21 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	}
 	if !reflect.DeepEqual(employee.Notes, user.Notes) {
 		t.Errorf("%v: Copy from slice doen't work", testCase)
+	}
+}
+
+func TestCopySameStructWithPointerField(t *testing.T) {
+	var fakeAge int32 = 12
+	var currentTime time.Time = time.Now()
+	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
+	newUser := &User{}
+	copier.Copy(newUser, user)
+	if user.Birthday == newUser.Birthday {
+		t.Errorf("TestCopySameStructWithPointerField: copy Birthday failed since they need to have different address")
+	}
+
+	if user.FakeAge == newUser.FakeAge {
+		t.Errorf("TestCopySameStructWithPointerField: copy FakeAge failed since they need to have different address")
 	}
 }
 
