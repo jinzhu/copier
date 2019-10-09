@@ -3,12 +3,14 @@ package copier
 import (
 	"database/sql"
 	"errors"
-	"reflect"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"reflect"
 	"time"
 )
 
 var _ignore = fmt.Sprint("")
+
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	var (
@@ -210,6 +212,12 @@ func set(to, from reflect.Value) bool {
 		} else if fromTypeName == "Time" && toTypeName == "string" {
 			//time.Time to string
 			to.SetString(from.Interface().(time.Time).Format(time.RFC3339))
+		} else if fromTypeName == "string" && toTypeName == "ObjectID" {
+			oid, err := primitive.ObjectIDFromHex(from.String())
+			if err != nil {
+				return false
+			}
+			to.Set(reflect.ValueOf(oid))
 		} else {
 			//fmt.Printf("to=%s, from=%s\n", to.Type().Name(), from.Type().Name())
 			return false
