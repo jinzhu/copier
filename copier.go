@@ -218,6 +218,9 @@ func set(to, from reflect.Value) bool {
 				return false
 			}
 			to.Set(reflect.ValueOf(oid))
+		} else if fromTypeName == "ObjectID" && toTypeName == "string" {
+			oid := from.Interface().(primitive.ObjectID)
+			to.Set(reflect.ValueOf(oid.Hex()))
 		} else {
 			//fmt.Printf("to=%s, from=%s\n", to.Type().Name(), from.Type().Name())
 			return false
