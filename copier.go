@@ -162,21 +162,29 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 	return reflectType
 }
 
+var (
+	timePtrType = reflect.TypeOf(&time.Time{})
+)
+
 func set(to, from reflect.Value) bool {
+	//fmt.Printf("to=%s, from=%s\n", to.Type().String(), from.Type().Name())
 	var toPtr reflect.Value
 	if from.IsValid() {
+		fromTypeName := from.Type().Name()
 		if to.Kind() == reflect.Ptr {
 			toPtr = to
 			//set `to` to nil if from is nil
 			if from.Kind() == reflect.Ptr && from.IsNil() {
 				to.Set(reflect.Zero(to.Type()))
 				return true
+			} else if fromTypeName == "int64" && to.Type() == timePtrType && from.Int() <= 0 {
+				// int64(0) => *time.Timer(nil)
+				return true
 			} else if to.IsNil() {
 				to.Set(reflect.New(to.Type().Elem()))
 			}
 			to = to.Elem()
 		}
-		fromTypeName := from.Type().Name()
 		toTypeName := to.Type().Name()
 		if fromTypeName == "uint64" && toTypeName == "string" {
 			to.SetString(fmt.Sprintf("%d", from.Interface()))
@@ -190,8 +198,7 @@ func set(to, from reflect.Value) bool {
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem())
 		} else if fromTypeName == "int64" && toTypeName == "Time" {
-			//int64 to time.Time
-			// default is second
+			//int64 to time.Time, default is second
 			t := time.Unix(from.Int(), 0)
 			to.Set(reflect.ValueOf(t))
 		} else if toTypeName == "int64" && fromTypeName == "Time" {
