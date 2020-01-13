@@ -45,6 +45,11 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		return
 	}
 
+	// Going from empty slice to empty slice
+	if amount == 0 {
+		to.Set(reflect.MakeSlice(to.Type(), 0, 0))
+	}
+
 	for i := 0; i < amount; i++ {
 		var dest, source reflect.Value
 

@@ -372,3 +372,18 @@ func TestCopySliceFieldsWithSameUnderlyingTypes(t *testing.T) {
 		t.Errorf("Not all fields were copied correctly")
 	}
 }
+
+func TestCopyEmptySliceFieldsWithSameUnderlyingTypes(t *testing.T) {
+	obj1 := structSameUnderlyingType1{[]string{}, []string{}, []stringType{}, []stringType{}}
+	obj2 := structSameUnderlyingType2{}
+	err := copier.Copy(&obj2, &obj1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	expected := structSameUnderlyingType2{[]string{}, []stringType{}, []string{}, []stringType2{}}
+
+	if !reflect.DeepEqual(obj2, expected) {
+		t.Errorf("Not all fields were copied correctly")
+	}
+}
