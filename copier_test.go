@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-openapi/strfmt"
+	"github.com/jinzhu/copier/testpkg"
 	"github.com/jinzhu/copier"
 )
 
@@ -303,6 +305,59 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
+	}
+}
+
+type LocalDateTime time.Time
+
+type structCustomTypePointer1 struct {
+    A *LocalDateTime
+	B *testpkg.DateTime
+	C *strfmt.DateTime
+}
+
+type structCustomTypePointer2 struct {
+    A *LocalDateTime
+	B *testpkg.DateTime
+	C *strfmt.DateTime
+}
+
+func TestCopyCustomTypePointer(t *testing.T) {
+    val1 := LocalDateTime(time.Now())
+    val2 := testpkg.DateTime(time.Now().Add(time.Hour))
+    val3 := strfmt.DateTime(time.Now().Add(time.Minute))
+	obj1 := structCustomTypePointer1{
+		A: &val1,
+		B: &val2,
+		C: &val3,
+	}
+
+	obj2 := &structCustomTypePointer2{}
+
+
+	err := copier.Copy(obj2, &obj1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if obj2.A == obj1.A {
+		t.Errorf("Field B should not be the same pointer")
+	}
+	if obj2.B == obj1.B {
+		t.Errorf("Field B should not be the same pointer")
+	}
+	if obj2.C == obj1.C {
+		t.Errorf("Field C should not be the same pointer")
+	}
+
+	if time.Time(*obj2.A) != time.Time(*obj1.A) {
+		t.Errorf("Field A should be copied")
+	}
+	if time.Time(*obj2.B) != time.Time(*obj1.B) {
+		t.Errorf("Field B should be copied")
+	}
+	if time.Time(*obj2.C) != time.Time(*obj1.C) {
+		t.Errorf("Field C should be copied")
 	}
 }
 
