@@ -1,6 +1,7 @@
 package copier_test
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -171,7 +172,7 @@ func TestCopyFromStructToSlice(t *testing.T) {
 }
 
 func TestCopyFromSliceToSlice(t *testing.T) {
-	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
+	users := []User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, {Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -1110,4 +1111,39 @@ func TestScanner(t *testing.T) {
 	if s.V.V != s2.V.V {
 		t.Errorf("Field V should be copied")
 	}
+}
+
+func TestScanFromPtrToSqlNullable(t *testing.T) {
+
+	var (
+		from struct {
+			S    string
+			Sptr *string
+		}
+
+		to struct {
+			S    sql.NullString
+			Sptr sql.NullString
+		}
+
+		s string
+	)
+
+	s = "test"
+	from.S = s
+	from.Sptr = &s
+
+	err := copier.Copy(&to, from)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if to.S.String != from.S {
+		t.Errorf("Field S should be copied")
+	}
+
+	if to.Sptr.String != *from.Sptr {
+		t.Errorf("Field Sptr should be copied")
+	}
+
 }

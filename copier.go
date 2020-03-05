@@ -352,7 +352,9 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
 		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
-			if err := scanner.Scan(from.Interface()); err != nil {
+			from = indirect(from)
+			err := scanner.Scan(from.Interface())
+			if err != nil {
 				return false
 			}
 		} else if from.Kind() == reflect.Ptr {
