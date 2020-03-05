@@ -175,6 +175,7 @@ func set(to, from reflect.Value) bool {
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
 		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+			from = indirect(from)
 			err := scanner.Scan(from.Interface())
 			if err != nil {
 				return false
