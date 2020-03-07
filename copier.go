@@ -336,8 +336,8 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 			} else if to.IsNil() {
 				// `from`         -> `to`
 				// sql.NullString -> *string
-				if val, ok := valuer(from); ok {
-					v, err := val.Value()
+				if fromValuer, ok := driverValuer(from); ok {
+					v, err := fromValuer.Value()
 					if err != nil {
 						return false
 					}
@@ -384,10 +384,10 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 			if err != nil {
 				return false
 			}
-		} else if val, ok := valuer(from); ok {
+		} else if fromValuer, ok := driverValuer(from); ok {
 			// `from`         -> `to`
 			// sql.NullString -> string
-			v, err := val.Value()
+			v, err := fromValuer.Value()
 			if err != nil {
 				return false
 			}
@@ -457,7 +457,7 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 	return
 }
 
-func valuer(v reflect.Value) (i driver.Valuer, ok bool) {
+func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
 
 	if !v.CanAddr() {
 		i, ok = v.Interface().(driver.Valuer)
