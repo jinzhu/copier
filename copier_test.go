@@ -240,7 +240,7 @@ func TestEmbeddedAndBase(t *testing.T) {
 	type Base struct {
 		BaseField1 int
 		BaseField2 int
-		User *User
+		User       *User
 	}
 
 	type Embed struct {
@@ -256,27 +256,27 @@ func TestEmbeddedAndBase(t *testing.T) {
 	embeded.EmbedField1 = 3
 	embeded.EmbedField2 = 4
 
-	user:=User{
-		Name:"testName",
+	user := User{
+		Name: "testName",
 	}
-	embeded.User=&user
+	embeded.User = &user
 
 	copier.Copy(&base, &embeded)
 
-	if base.BaseField1 != 1 || base.User.Name!="testName"{
+	if base.BaseField1 != 1 || base.User.Name != "testName" {
 		t.Error("Embedded fields not copied")
 	}
 
-	base.BaseField1=11
-	base.BaseField2=12
-	user1:=User{
-		Name:"testName1",
+	base.BaseField1 = 11
+	base.BaseField2 = 12
+	user1 := User{
+		Name: "testName1",
 	}
-	base.User=&user1
+	base.User = &user1
 
-	copier.Copy(&embeded,&base)
+	copier.Copy(&embeded, &base)
 
-	if embeded.BaseField1 != 11 || embeded.User.Name!="testName1" {
+	if embeded.BaseField1 != 11 || embeded.User.Name != "testName1" {
 		t.Error("base fields not copied")
 	}
 }
@@ -303,6 +303,54 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
+	}
+}
+
+type Foo1 struct {
+	Name string
+	Age  int32
+}
+
+type Foo2 struct {
+	Name string
+}
+
+type StructWithMap1 struct {
+	Map map[int]Foo1
+}
+
+type StructWithMap2 struct {
+	Map map[int32]Foo2
+}
+
+func TestCopyMapOfStruct(t *testing.T) {
+	obj1 := StructWithMap1{Map: map[int]Foo1{2: {Name: "A pure foo"}}}
+	obj2 := &StructWithMap2{}
+	err := copier.Copy(obj2, obj1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+	for k, v1 := range obj1.Map {
+		v2, ok := obj2.Map[int32(k)]
+		if !ok || v1.Name != v2.Name {
+			t.Errorf("Map should be copied")
+		}
+	}
+}
+
+func TestCopyMapOfInt(t *testing.T) {
+	map1 := map[int]int{3: 6, 4: 8}
+	map2 := map[int32]int8{}
+	err := copier.Copy(&map2, map1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	for k, v1 := range map1 {
+		v2, ok := map2[int32(k)]
+		if !ok || v1 != int(v2) {
+			t.Errorf("Map should be copied")
+		}
 	}
 }
 
