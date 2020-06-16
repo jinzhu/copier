@@ -8,6 +8,16 @@ import (
 
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
+	return copy(toValue, fromValue, false)
+}
+
+// CopyNonEmpty ignores all the empty values in the `from` struct, to retain the original non-empty values in the `to`
+// struct.
+func CopyNonEmpty(toValue interface{}, fromValue interface{}) (err error) {
+	return copy(toValue, fromValue, true)
+}
+
+func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err error) {
 	var (
 		isSlice bool
 		amount  = 1
@@ -65,12 +75,12 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		// check source
 		if source.IsValid() {
 			fromTypeFields := deepFields(fromType)
-			//fmt.Printf("%#v", fromTypeFields)
+			// fmt.Printf("%#v", fromTypeFields)
 			// Copy from field to field or method
 			for _, field := range fromTypeFields {
 				name := field.Name
 
-				if fromField := source.FieldByName(name); fromField.IsValid() {
+				if fromField := source.FieldByName(name); fromField.IsValid() && !shouldIgnore(fromField, ignoreEmpty) {
 					// has field
 					if toField := dest.FieldByName(name); toField.IsValid() {
 						if toField.CanSet() {
@@ -128,6 +138,26 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	return
 }
 
+func shouldIgnore(v reflect.Value, ignoreEmpty bool) bool {
+	if !ignoreEmpty {
+		return true
+	}
+
+	switch v.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return v.Int() == 0
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return v.Uint() == 0
+	case reflect.String:
+		return v.String() == ""
+	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Interface, reflect.Chan:
+		return v.IsNil()
+	case reflect.Bool:
+		return !v.Bool()
+	}
+	return false
+}
+
 func deepFields(reflectType reflect.Type) []reflect.StructField {
 	var fields []reflect.StructField
 
@@ -162,7 +192,7 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
-			//set `to` to nil if from is nil
+			// set `to` to nil if from is nil
 			if from.Kind() == reflect.Ptr && from.IsNil() {
 				to.Set(reflect.Zero(to.Type()))
 				return true

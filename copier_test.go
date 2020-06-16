@@ -2,11 +2,12 @@ package copier_test
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
 
-	"github.com/jinzhu/copier"
+	"github.com/rahulkhairwar/copier"
 )
 
 type User struct {
@@ -303,6 +304,18 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
+	}
+}
+
+func TestCopyNonEmpty(t *testing.T) {
+	from := structSameName2{}
+	to := &structSameName1{A: "123", B: 2, C: time.Now()}
+	if err := copier.CopyNonEmpty(to, &from); err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if to.A == from.A {
+		t.Errorf("Field A should not be copied")
 	}
 }
 
