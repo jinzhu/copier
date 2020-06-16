@@ -281,16 +281,25 @@ func TestEmbeddedAndBase(t *testing.T) {
 	}
 }
 
+type someStruct struct {
+	IntField int
+	UIntField uint64
+}
+
 type structSameName1 struct {
 	A string
 	B int64
 	C time.Time
+	D string
+	E *someStruct
 }
 
 type structSameName2 struct {
 	A string
 	B time.Time
 	C int64
+	D string
+	E *someStruct
 }
 
 func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
@@ -303,6 +312,20 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
+	}
+}
+
+func TestCopyNonEmpty(t *testing.T) {
+	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
+	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
+	if err := copier.CopyNonEmpty(to, &from); err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if to.A == from.A {
+		t.Errorf("Field A should not be copied")
+	} else if to.D != from.D {
+		t.Errorf("Field D should be copied")
 	}
 }
 
