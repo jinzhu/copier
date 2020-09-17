@@ -161,6 +161,10 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
+		if from.Kind() == reflect.Struct {
+			return false
+		}
+
 		if to.Kind() == reflect.Ptr {
 			//set `to` to nil if from is nil
 			if from.Kind() == reflect.Ptr && from.IsNil() {
