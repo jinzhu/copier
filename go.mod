@@ -1,4 +1,4 @@
-module copier
+module github.com/ybzhanghx/copier
 
 go 1.15
 
