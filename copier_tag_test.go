@@ -1,13 +1,11 @@
 package copier_test
 
 import (
-	"copier"
 	"errors"
+	"github.com/ybzhanghx/copier"
 	"reflect"
 	"testing"
 	"time"
-
-
 )
 
 type UserTag struct {

@@ -1,8 +1,8 @@
 package copier_test
 
 import (
-	"copier"
 	"encoding/json"
+	"github.com/ybzhanghx/copier"
 	"testing"
 )
 
