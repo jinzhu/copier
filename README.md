@@ -11,6 +11,8 @@
 * Copy from field to method with same name
 * Copy from slice to slice
 * Copy from struct to slice
+* Enforce copying a field with a tag
+* Ignore a field with a tag
 
 ## Usage
 
@@ -26,15 +28,27 @@ type User struct {
 	Name string
 	Role string
 	Age  int32
+
+	// Explicitly ignored in the destination struct.
+	Salary   int
 }
 
 func (user *User) DoubleAge() int32 {
 	return 2 * user.Age
 }
 
+// Tags in the destination Struct provide instructions to copier.Copy to ignore
+// or enforce copying and to panic or return an error if a field was not copied.
 type Employee struct {
-	Name      string
-	Age       int32
+	// Tell copier.Copy to panic if this field is not copied.
+	Name      string `copier:"must"`
+
+	// Tell copier.Copy to return an error if this field is not copied.
+	Age       int32  `copier:"must,nopanic"`
+
+	// Tell copier.Copy to explicitly ignore copying this field.
+	Salary    int    `copier:"-"`
+
 	DoubleAge int32
 	EmployeId int64
 	SuperRule string
@@ -46,9 +60,9 @@ func (employee *Employee) Role(role string) {
 
 func main() {
 	var (
-		user      = User{Name: "Jinzhu", Age: 18, Role: "Admin"}
-		users     = []User{{Name: "Jinzhu", Age: 18, Role: "Admin"}, {Name: "jinzhu 2", Age: 30, Role: "Dev"}}
-		employee  = Employee{}
+		user      = User{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 200000}
+		users     = []User{{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 100000}, {Name: "jinzhu 2", Age: 30, Role: "Dev", Salary: 60000}}
+		employee  = Employee{Salary: 150000}
 		employees = []Employee{}
 	)
 
@@ -58,6 +72,7 @@ func main() {
 	// Employee{
 	//    Name: "Jinzhu",           // Copy from field
 	//    Age: 18,                  // Copy from field
+	//    Salary:150000,            // Copying explicitly ignored
 	//    DoubleAge: 36,            // Copy from method
 	//    EmployeeId: 0,            // Ignored
 	//    SuperRule: "Super Admin", // Copy to method
@@ -68,7 +83,7 @@ func main() {
 
 	fmt.Printf("%#v \n", employees)
 	// []Employee{
-	//   {Name: "Jinzhu", Age: 18, DoubleAge: 36, EmployeId: 0, SuperRule: "Super Admin"}
+	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeId: 0, SuperRule: "Super Admin"}
 	// }
 
 	// Copy slice to slice
@@ -77,8 +92,8 @@ func main() {
 
 	fmt.Printf("%#v \n", employees)
 	// []Employee{
-	//   {Name: "Jinzhu", Age: 18, DoubleAge: 36, EmployeId: 0, SuperRule: "Super Admin"},
-	//   {Name: "jinzhu 2", Age: 30, DoubleAge: 60, EmployeId: 0, SuperRule: "Super Dev"},
+	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeId: 0, SuperRule: "Super Admin"},
+	//   {Name: "jinzhu 2", Age: 30, Salary:0, DoubleAge: 60, EmployeId: 0, SuperRule: "Super Dev"},
 	// }
 }
 ```

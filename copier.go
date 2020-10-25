@@ -3,7 +3,25 @@ package copier
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"reflect"
+	"strings"
+)
+
+// These flags define options for tag handling
+const (
+	// Denotes that a destination field must be copied to. If copying fails then a panic will ensue.
+	tagMust uint8 = 1 << iota
+
+	// Denotes that the program should not panic when the must flag is on and
+	// value is not copied. The program will return an error instead.
+	tagNoPanic
+
+	// Ignore a destation field from being copied to.
+	tagIgnore
+
+	// Denotes that the value as been copied
+	hasCopied
 )
 
 // Copy copy things
@@ -62,6 +80,12 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 			dest = indirect(to)
 		}
 
+		// Get tag options
+		tagBitFlags := map[string]uint8{}
+		if dest.IsValid() {
+			tagBitFlags = getBitFlags(toType)
+		}
+
 		// check source
 		if source.IsValid() {
 			fromTypeFields := deepFields(fromType)
@@ -70,6 +94,14 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 			for _, field := range fromTypeFields {
 				name := field.Name
 
+				// Get bit flags for field
+				fieldFlags, _ := tagBitFlags[name]
+
+				// Check if we should ignore copying
+				if (fieldFlags & tagIgnore) != 0 {
+					continue
+				}
+
 				if fromField := source.FieldByName(name); fromField.IsValid() {
 					// has field
 					if toField := dest.FieldByName(name); toField.IsValid() {
@@ -77,6 +109,11 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 							if !set(toField, fromField) {
 								if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
 									return err
+								}
+							} else {
+								if fieldFlags != 0 {
+									// Note that a copy was made
+									tagBitFlags[name] = fieldFlags | hasCopied
 								}
 							}
 						}
@@ -124,6 +161,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 				to.Set(reflect.Append(to, dest))
 			}
 		}
+		err = checkBitFlags(tagBitFlags)
 	}
 	return
 }
@@ -186,4 +224,52 @@ func set(to, from reflect.Value) bool {
 		}
 	}
 	return true
+}
+
+// parseTags Parses struct tags and returns uint8 bit flags.
+func parseTags(tag string) (flags uint8) {
+	for _, t := range strings.Split(tag, ",") {
+		switch t {
+		case "-":
+			flags = tagIgnore
+			return
+		case "must":
+			flags = flags | tagMust
+		case "nopanic":
+			flags = flags | tagNoPanic
+		}
+	}
+	return
+}
+
+// getBitFlags Parses struct tags for bit flags.
+func getBitFlags(toType reflect.Type) map[string]uint8 {
+	flags := map[string]uint8{}
+	toTypeFields := deepFields(toType)
+
+	// Get a list dest of tags
+	for _, field := range toTypeFields {
+		tags := field.Tag.Get("copier")
+		if tags != "" {
+			flags[field.Name] = parseTags(tags)
+		}
+	}
+	return flags
+}
+
+// checkBitFlags Checks flags for error or panic conditions.
+func checkBitFlags(flagsList map[string]uint8) (err error) {
+	// Check flag conditions were met
+	for name, flags := range flagsList {
+		if flags&hasCopied == 0 {
+			switch {
+			case flags&tagMust != 0 && flags&tagNoPanic != 0:
+				err = fmt.Errorf("Field %s has must tag but was not copied", name)
+				return
+			case flags&(tagMust) != 0:
+				panic(fmt.Sprintf("Field %s has must tag but was not copied", name))
+			}
+		}
+	}
+	return
 }
