@@ -65,6 +65,30 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err err
 		return
 	}
 
+	if fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
+		if !fromType.Key().ConvertibleTo(toType.Key()) {
+			return
+		}
+		if to.IsNil() {
+			to.Set(reflect.MakeMapWithSize(toType, from.Len()))
+		}
+		for _, k := range from.MapKeys() {
+			toKey := indirect(reflect.New(toType.Key()))
+			if !set(toKey, k) {
+				continue
+			}
+
+			toValue := indirect(reflect.New(toType.Elem()))
+			if !set(toValue, from.MapIndex(k)) {
+				err = Copy(toValue.Addr().Interface(), from.MapIndex(k).Interface())
+				if err != nil {
+					continue
+				}
+			}
+			to.SetMapIndex(toKey, toValue)
+		}
+	}
+
 	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
 		return
 	}
