@@ -181,17 +181,7 @@ func shouldIgnore(v reflect.Value, ignoreEmpty bool) bool {
 		return false
 	}
 
-	switch v.Kind() {
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return v.Uint() == 0
-	case reflect.String:
-		return v.String() == ""
-	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Interface, reflect.Chan:
-		return v.IsNil()
-	}
-	return false
+	return v.IsZero()
 }
 
 func deepFields(reflectType reflect.Type) []reflect.StructField {
