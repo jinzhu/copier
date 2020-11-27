@@ -240,7 +240,7 @@ func TestEmbeddedAndBase(t *testing.T) {
 	type Base struct {
 		BaseField1 int
 		BaseField2 int
-		User *User
+		User       *User
 	}
 
 	type Embed struct {
@@ -256,33 +256,33 @@ func TestEmbeddedAndBase(t *testing.T) {
 	embedded.EmbedField1 = 3
 	embedded.EmbedField2 = 4
 
-	user:=User{
-		Name:"testName",
+	user := User{
+		Name: "testName",
 	}
-	embedded.User=&user
+	embedded.User = &user
 
 	copier.Copy(&base, &embedded)
 
-	if base.BaseField1 != 1 || base.User.Name!="testName"{
+	if base.BaseField1 != 1 || base.User.Name != "testName" {
 		t.Error("Embedded fields not copied")
 	}
 
-	base.BaseField1=11
-	base.BaseField2=12
-	user1:=User{
-		Name:"testName1",
+	base.BaseField1 = 11
+	base.BaseField2 = 12
+	user1 := User{
+		Name: "testName1",
 	}
-	base.User=&user1
+	base.User = &user1
 
-	copier.Copy(&embedded,&base)
+	copier.Copy(&embedded, &base)
 
-	if embedded.BaseField1 != 11 || embedded.User.Name!="testName1" {
+	if embedded.BaseField1 != 11 || embedded.User.Name != "testName1" {
 		t.Error("base fields not copied")
 	}
 }
 
 type someStruct struct {
-	IntField int
+	IntField  int
 	UIntField uint64
 }
 
@@ -318,7 +318,7 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 func TestCopyNonEmpty(t *testing.T) {
 	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
 	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
-	if err := copier.CopyNonEmpty(to, &from); err != nil {
+	if err := copier.CopyWithOption(to, &from, copier.Option{IgnoreEmpty: true}); err != nil {
 		t.Error("Should not raise error")
 	}
 

@@ -29,10 +29,13 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	return copy(toValue, fromValue, false)
 }
 
-// CopyNonEmpty ignores all the empty values in the `from` struct, to retain the original non-empty values in the `to`
-// struct.
-func CopyNonEmpty(toValue interface{}, fromValue interface{}) (err error) {
-	return copy(toValue, fromValue, true)
+type Option struct {
+	IgnoreEmpty bool
+}
+
+// CopyWithOption copy with option
+func CopyWithOption(toValue interface{}, fromValue interface{}, option Option) (err error) {
+	return copy(toValue, fromValue, option.IgnoreEmpty)
 }
 
 func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err error) {
