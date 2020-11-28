@@ -9,6 +9,11 @@ import (
 	"github.com/jinzhu/copier"
 )
 
+type Details struct {
+	Detail1 string
+	Detail2 *string
+}
+
 type User struct {
 	Name     string
 	Birthday *time.Time
@@ -18,6 +23,7 @@ type User struct {
 	FakeAge  *int32
 	Notes    []string
 	flags    []byte
+	Details  *Details
 }
 
 func (user User) DoubleAge() int32 {
@@ -35,6 +41,7 @@ type Employee struct {
 	SuperRule string
 	Notes     []string
 	flags     []byte
+	Details   *Details
 }
 
 func (employee *Employee) Role(role string) {
@@ -71,14 +78,21 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 		t.Errorf("%v: Copy to method doesn't work", testCase)
 	}
 	if !reflect.DeepEqual(employee.Notes, user.Notes) {
-		t.Errorf("%v: Copy from slice doen't work", testCase)
+		t.Errorf("%v: Copy from slice doesn't work", testCase)
+	}
+	if employee.Details.Detail1 != user.Details.Detail1 {
+		t.Errorf("%v: Copy to method doesn't work", testCase)
+	}
+	if employee.Details.Detail2 == user.Details.Detail2 {
+		t.Errorf("%v: Copy to method doesn't work", testCase)
 	}
 }
 
 func TestCopySameStructWithPointerField(t *testing.T) {
 	var fakeAge int32 = 12
 	var currentTime time.Time = time.Now()
-	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
+	detail2 := "world"
+	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}}
 	newUser := &User{}
 	copier.Copy(newUser, user)
 	if user.Birthday == newUser.Birthday {
@@ -88,12 +102,16 @@ func TestCopySameStructWithPointerField(t *testing.T) {
 	if user.FakeAge == newUser.FakeAge {
 		t.Errorf("TestCopySameStructWithPointerField: copy FakeAge failed since they need to have different address")
 	}
+
+	if user.Details == newUser.Details {
+		t.Errorf("TestCopySameStructWithPointerField: copy Details failed since they need to have different address")
+	}
 }
 
 func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string) {
 	if user == nil {
 		if employee.Name != "" || employee.Nickname != nil || employee.Birthday != nil || employee.Age != 0 ||
-			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil {
+			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil || employee.Details != nil {
 			t.Errorf("%v : employee should be empty", testCase)
 		}
 		return
@@ -104,7 +122,8 @@ func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string
 
 func TestCopyStruct(t *testing.T) {
 	var fakeAge int32 = 12
-	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
+	detail2 := "world"
+	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}}
 	employee := Employee{}
 
 	if err := copier.Copy(employee, &user); err == nil {
@@ -129,7 +148,8 @@ func TestCopyStruct(t *testing.T) {
 }
 
 func TestCopyFromStructToSlice(t *testing.T) {
-	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
+	detail2 := "world"
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}}
 	employees := []Employee{}
 
 	if err := copier.Copy(employees, &user); err != nil && len(employees) != 0 {
@@ -165,7 +185,9 @@ func TestCopyFromStructToSlice(t *testing.T) {
 }
 
 func TestCopyFromSliceToSlice(t *testing.T) {
-	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
+	detail2User1 := "world1"
+	detail2User2 := "world2"
+	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2User1}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}, Details: &Details{Detail1: "hello", Detail2: &detail2User2}}}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -201,7 +223,8 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 }
 
 func TestCopyFromSliceToSlice2(t *testing.T) {
-	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, nil}
+	detail2 := "world"
+	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}}, nil}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -279,6 +302,58 @@ func TestEmbeddedAndBase(t *testing.T) {
 	if embedded.BaseField1 != 11 || embedded.User.Name != "testName1" {
 		t.Error("base fields not copied")
 	}
+}
+
+func TestStructField(t *testing.T) {
+	type Details struct {
+		Info  string
+		Info2 *string
+	}
+	type User struct {
+		Details *Details
+	}
+	type Employee struct {
+		Details Details
+	}
+
+	t.Run("Should work with same type", func(t *testing.T) {
+		info2 := "world"
+		from := User{Details: &Details{Info: "hello", Info2: &info2}}
+		to := User{}
+		copier.Copy(&to, from)
+
+		*to.Details.Info2 = "new value"
+
+		if to.Details == from.Details {
+			t.Errorf("TestStructField: copy Details failed since they need to have different address")
+		}
+		if to.Details.Info != from.Details.Info {
+			t.Errorf("should be the same")
+		}
+		if to.Details.Info2 == from.Details.Info2 {
+			t.Errorf("should be different")
+		}
+	})
+
+	t.Run("Should work with different type", func(t *testing.T) {
+		info2 := "world"
+		from := User{Details: &Details{Info: "hello", Info2: &info2}}
+		to := Employee{}
+		copier.Copy(&to, from)
+
+		newValue := "new value"
+		to.Details.Info2 = &newValue
+
+		if to.Details.Info == "" {
+			t.Errorf("should not be empty")
+		}
+		if to.Details.Info != from.Details.Info {
+			t.Errorf("should be the same")
+		}
+		if to.Details.Info2 == from.Details.Info2 {
+			t.Errorf("should be different")
+		}
+	})
 }
 
 type structSameName1 struct {
