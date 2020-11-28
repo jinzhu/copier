@@ -172,6 +172,14 @@ func set(to, from reflect.Value) bool {
 			to = to.Elem()
 		}
 
+		if from.Kind() == reflect.Struct {
+			err := Copy(to, from)
+			if err != nil {
+				return false
+			}
+			return true
+		}
+
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
 		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
