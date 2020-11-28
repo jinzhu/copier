@@ -298,7 +298,6 @@ func TestEmbeddedAndBase(t *testing.T) {
 	base.User = &user1
 
 	copier.Copy(&embedded, &base)
-
 	if embedded.BaseField1 != 11 || embedded.User.Name != "testName1" {
 		t.Error("base fields not copied")
 	}
@@ -356,16 +355,25 @@ func TestStructField(t *testing.T) {
 	})
 }
 
+type someStruct struct {
+	IntField  int
+	UIntField uint64
+}
+
 type structSameName1 struct {
 	A string
 	B int64
 	C time.Time
+	D string
+	E *someStruct
 }
 
 type structSameName2 struct {
 	A string
 	B time.Time
 	C int64
+	D string
+	E *someStruct
 }
 
 func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
@@ -378,6 +386,68 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 
 	if obj2.A != obj1.A {
 		t.Errorf("Field A should be copied")
+	}
+}
+
+type Foo1 struct {
+	Name string
+	Age  int32
+}
+
+type Foo2 struct {
+	Name string
+}
+
+type StructWithMap1 struct {
+	Map map[int]Foo1
+}
+
+type StructWithMap2 struct {
+	Map map[int32]Foo2
+}
+
+func TestCopyMapOfStruct(t *testing.T) {
+	obj1 := StructWithMap1{Map: map[int]Foo1{2: {Name: "A pure foo"}}}
+	obj2 := &StructWithMap2{}
+	err := copier.Copy(obj2, obj1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+	for k, v1 := range obj1.Map {
+		v2, ok := obj2.Map[int32(k)]
+		if !ok || v1.Name != v2.Name {
+			t.Errorf("Map should be copied")
+		}
+	}
+}
+
+func TestCopyMapOfInt(t *testing.T) {
+	map1 := map[int]int{3: 6, 4: 8}
+	map2 := map[int32]int8{}
+	err := copier.Copy(&map2, map1)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	for k, v1 := range map1 {
+		v2, ok := map2[int32(k)]
+		if !ok || v1 != int(v2) {
+			t.Errorf("Map should be copied")
+		}
+	}
+}
+
+func TestCopyNonEmpty(t *testing.T) {
+	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
+	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
+	if err := copier.CopyWithOption(to, &from, copier.Option{IgnoreEmpty: true}); err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if to.A == from.A {
+		t.Errorf("Field A should not be copied")
+	} else if to.D != from.D {
+		t.Errorf("Field D should be copied")
 	}
 }
 

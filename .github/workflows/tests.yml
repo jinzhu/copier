@@ -1,0 +1,29 @@
+name: tests
+
+on:
+  push:
+    branches-ignore:
+      - 'gh-pages'
+  pull_request:
+    branches-ignore:
+      - 'gh-pages'
+
+jobs:
+  ci:
+    strategy:
+      matrix:
+        go: ['1.15', '1.14', '1.13']
+        platform: [ubuntu-latest, macos-latest] # can not run in windows OS
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ matrix.go }}
+
+    - name: Check out code into the Go module directory
+      uses: actions/checkout@v2
+
+    - name: Tests
+      run: go test

@@ -26,6 +26,19 @@ const (
 
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
+	return copy(toValue, fromValue, false)
+}
+
+type Option struct {
+	IgnoreEmpty bool
+}
+
+// CopyWithOption copy with option
+func CopyWithOption(toValue interface{}, fromValue interface{}, option Option) (err error) {
+	return copy(toValue, fromValue, option.IgnoreEmpty)
+}
+
+func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err error) {
 	var (
 		isSlice bool
 		amount  = 1
@@ -50,6 +63,30 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	if fromType.Kind() != reflect.Struct && from.Type().AssignableTo(to.Type()) {
 		to.Set(from)
 		return
+	}
+
+	if fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
+		if !fromType.Key().ConvertibleTo(toType.Key()) {
+			return
+		}
+		if to.IsNil() {
+			to.Set(reflect.MakeMapWithSize(toType, from.Len()))
+		}
+		for _, k := range from.MapKeys() {
+			toKey := indirect(reflect.New(toType.Key()))
+			if !set(toKey, k) {
+				continue
+			}
+
+			toValue := indirect(reflect.New(toType.Elem()))
+			if !set(toValue, from.MapIndex(k)) {
+				err = Copy(toValue.Addr().Interface(), from.MapIndex(k).Interface())
+				if err != nil {
+					continue
+				}
+			}
+			to.SetMapIndex(toKey, toValue)
+		}
 	}
 
 	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
@@ -89,7 +126,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		// check source
 		if source.IsValid() {
 			fromTypeFields := deepFields(fromType)
-			//fmt.Printf("%#v", fromTypeFields)
+			// fmt.Printf("%#v", fromTypeFields)
 			// Copy from field to field or method
 			for _, field := range fromTypeFields {
 				name := field.Name
@@ -102,7 +139,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 					continue
 				}
 
-				if fromField := source.FieldByName(name); fromField.IsValid() {
+				if fromField := source.FieldByName(name); fromField.IsValid() && !shouldIgnore(fromField, ignoreEmpty) {
 					// has field
 					if toField := dest.FieldByName(name); toField.IsValid() {
 						if toField.CanSet() {
@@ -144,7 +181,7 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 					fromMethod = source.MethodByName(name)
 				}
 
-				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 {
+				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 && !shouldIgnore(fromMethod, ignoreEmpty) {
 					if toField := dest.FieldByName(name); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
 						if len(values) >= 1 {
@@ -164,6 +201,14 @@ func Copy(toValue interface{}, fromValue interface{}) (err error) {
 		err = checkBitFlags(tagBitFlags)
 	}
 	return
+}
+
+func shouldIgnore(v reflect.Value, ignoreEmpty bool) bool {
+	if !ignoreEmpty {
+		return false
+	}
+
+	return v.IsZero()
 }
 
 func deepFields(reflectType reflect.Type) []reflect.StructField {
@@ -204,7 +249,7 @@ func set(to, from reflect.Value) bool {
 		}
 
 		if to.Kind() == reflect.Ptr {
-			//set `to` to nil if from is nil
+			// set `to` to nil if from is nil
 			if from.Kind() == reflect.Ptr && from.IsNil() {
 				to.Set(reflect.Zero(to.Type()))
 				return true

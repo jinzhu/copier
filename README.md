@@ -2,7 +2,7 @@
 
   I am a copier, I copy everything from one to another
 
-[![wercker status](https://app.wercker.com/status/9d44ad2d4e6253929c8fb71359effc0b/s/master "wercker status")](https://app.wercker.com/project/byKey/9d44ad2d4e6253929c8fb71359effc0b)
+[![test status](https://github.com/jinzhu/copier/workflows/tests/badge.svg?branch=master "test status")](https://github.com/jinzhu/copier/actions)
 
 ## Features
 
@@ -11,6 +11,7 @@
 * Copy from field to method with same name
 * Copy from slice to slice
 * Copy from struct to slice
+* Copy from map to map
 * Enforce copying a field with a tag
 * Ignore a field with a tag
 
@@ -95,7 +96,21 @@ func main() {
 	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeId: 0, SuperRule: "Super Admin"},
 	//   {Name: "jinzhu 2", Age: 30, Salary:0, DoubleAge: 60, EmployeId: 0, SuperRule: "Super Dev"},
 	// }
+
+ 	// Copy map to map
+	map1 := map[int]int{3: 6, 4: 8}
+	map2 := map[int32]int8{}
+	copier.Copy(&map2, map1)
+
+	fmt.Printf("%#v \n", map2)
+	// map[int32]int8{3:6, 4:8}
 }
+```
+
+### Copy with Option
+
+```go
+copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true})
 ```
 
 ## Contributing
