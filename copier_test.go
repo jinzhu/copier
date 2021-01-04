@@ -314,7 +314,7 @@ func TestStructField(t *testing.T) {
 		Details *SimilarDetails
 	}
 
-	optionsDeepCopy := Option{
+	optionsDeepCopy := copier.Option{
 		DeepCopy: true,
 	}
 
@@ -443,7 +443,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
 			to := UserWithDetailsPtr{}
-			CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
 
 			*to.Details.Info2 = "new value"
 
@@ -461,7 +461,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
 			to := UserWithDetails{}
-			CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
 
 			*to.Details.Info2 = "new value"
 
@@ -480,7 +480,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetailsPtr{}
-			CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
 
 			newValue := "new value"
 			to.Details.Info2 = &newValue
@@ -500,7 +500,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetails{}
-			CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
 
 			newValue := "new value"
 			to.Details.Info2 = &newValue
@@ -520,7 +520,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetails{}
-			CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
 
 			newValue := "new value"
 			to.Details.Info2 = &newValue
@@ -540,7 +540,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetailsPtr{}
-			CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
 
 			newValue := "new value"
 			to.Details.Info2 = &newValue
@@ -643,7 +643,7 @@ func TestCopyMapOfInt(t *testing.T) {
 func TestCopyNonEmpty(t *testing.T) {
 	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
 	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
-	if err := CopyWithOption(to, &from, Option{IgnoreEmpty: true}); err != nil {
+	if err := copier.CopyWithOption(to, &from, Option{IgnoreEmpty: true}); err != nil {
 		t.Error("Should not raise error")
 	}
 
