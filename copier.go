@@ -26,19 +26,21 @@ const (
 
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
-	return copy(toValue, fromValue, false)
+	return copy(toValue, fromValue, false, false)
 }
 
+// Option sets copy options
 type Option struct {
 	IgnoreEmpty bool
+	DeepCopy    bool
 }
 
 // CopyWithOption copy with option
 func CopyWithOption(toValue interface{}, fromValue interface{}, option Option) (err error) {
-	return copy(toValue, fromValue, option.IgnoreEmpty)
+	return copy(toValue, fromValue, option.IgnoreEmpty, option.DeepCopy)
 }
 
-func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err error) {
+func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool) (err error) {
 	var (
 		isSlice bool
 		amount  = 1
@@ -74,12 +76,12 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err err
 		}
 		for _, k := range from.MapKeys() {
 			toKey := indirect(reflect.New(toType.Key()))
-			if !set(toKey, k) {
+			if !set(toKey, k, deepCopy) {
 				continue
 			}
 
 			toValue := indirect(reflect.New(toType.Elem()))
-			if !set(toValue, from.MapIndex(k)) {
+			if !set(toValue, from.MapIndex(k), deepCopy) {
 				err = Copy(toValue.Addr().Interface(), from.MapIndex(k).Interface())
 				if err != nil {
 					continue
@@ -142,7 +144,7 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err err
 					// has field
 					if toField := dest.FieldByName(name); toField.IsValid() {
 						if toField.CanSet() {
-							if !set(toField, fromField) {
+							if !set(toField, fromField, deepCopy) {
 								if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
 									return err
 								}
@@ -184,7 +186,7 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err err
 					if toField := dest.FieldByName(name); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
 						if len(values) >= 1 {
-							set(toField, values[0])
+							set(toField, values[0], deepCopy)
 						}
 					}
 				}
@@ -241,7 +243,7 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 	return reflectType
 }
 
-func set(to, from reflect.Value) bool {
+func set(to, from reflect.Value, deepCopy bool) bool {
 	if from.IsValid() {
 
 		if to.Kind() == reflect.Ptr {
@@ -255,7 +257,7 @@ func set(to, from reflect.Value) bool {
 			to = to.Elem()
 		}
 
-		if to.Kind() == reflect.Struct {
+		if deepCopy && to.Kind() == reflect.Struct {
 			return false
 		}
 
@@ -267,7 +269,7 @@ func set(to, from reflect.Value) bool {
 				return false
 			}
 		} else if from.Kind() == reflect.Ptr {
-			return set(to, from.Elem())
+			return set(to, from.Elem(), deepCopy)
 		} else {
 			return false
 		}

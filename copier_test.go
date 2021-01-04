@@ -9,27 +9,15 @@ import (
 	"github.com/jinzhu/copier"
 )
 
-type Details struct {
-	Detail1 string
-	Detail2 *string
-}
-
-type SimilarDetails struct {
-	Detail1 string
-	Detail2 *string
-}
-
 type User struct {
-	Name         string
-	Birthday     *time.Time
-	Nickname     string
-	Role         string
-	Age          int32
-	FakeAge      *int32
-	Notes        []string
-	flags        []byte
-	Details      *Details
-	OtherDetails Details
+	Name     string
+	Birthday *time.Time
+	Nickname string
+	Role     string
+	Age      int32
+	FakeAge  *int32
+	Notes    []string
+	flags    []byte
 }
 
 func (user User) DoubleAge() int32 {
@@ -37,18 +25,16 @@ func (user User) DoubleAge() int32 {
 }
 
 type Employee struct {
-	Name         string
-	Birthday     *time.Time
-	Nickname     *string
-	Age          int64
-	FakeAge      int
-	EmployeID    int64
-	DoubleAge    int32
-	SuperRule    string
-	Notes        []string
-	flags        []byte
-	Details      *Details
-	OtherDetails *SimilarDetails
+	Name      string
+	Birthday  *time.Time
+	Nickname  *string
+	Age       int64
+	FakeAge   int
+	EmployeID int64
+	DoubleAge int32
+	SuperRule string
+	Notes     []string
+	flags     []byte
 }
 
 func (employee *Employee) Role(role string) {
@@ -87,26 +73,12 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	if !reflect.DeepEqual(employee.Notes, user.Notes) {
 		t.Errorf("%v: Copy from slice doesn't work", testCase)
 	}
-	if employee.Details == nil || employee.Details.Detail1 != user.Details.Detail1 {
-		t.Errorf("%v: Copy to method doesn't work", testCase)
-	}
-	if employee.Details == nil || employee.Details.Detail2 == user.Details.Detail2 {
-		t.Errorf("%v: Copy to method doesn't work", testCase)
-	}
-	if employee.OtherDetails == nil || employee.OtherDetails.Detail1 != user.OtherDetails.Detail1 {
-		t.Errorf("%v: Copy to method doesn't work", testCase)
-	}
-	if employee.OtherDetails == nil || employee.OtherDetails.Detail2 == user.OtherDetails.Detail2 {
-		t.Errorf("%v: Copy to method doesn't work", testCase)
-	}
 }
 
 func TestCopySameStructWithPointerField(t *testing.T) {
 	var fakeAge int32 = 12
 	var currentTime time.Time = time.Now()
-	detail2 := "world"
-	otherDetail2 := "world"
-	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}
+	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
 	newUser := &User{}
 	copier.Copy(newUser, user)
 	if user.Birthday == newUser.Birthday {
@@ -116,20 +88,12 @@ func TestCopySameStructWithPointerField(t *testing.T) {
 	if user.FakeAge == newUser.FakeAge {
 		t.Errorf("TestCopySameStructWithPointerField: copy FakeAge failed since they need to have different address")
 	}
-
-	if user.Details == newUser.Details {
-		t.Errorf("TestCopySameStructWithPointerField: copy Details failed since they need to have different address")
-	}
-
-	if user.OtherDetails == newUser.OtherDetails {
-		t.Errorf("TestCopySameStructWithPointerField: copy OtherDetails failed since they need to have different address")
-	}
 }
 
 func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string) {
 	if user == nil {
 		if employee.Name != "" || employee.Nickname != nil || employee.Birthday != nil || employee.Age != 0 ||
-			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil || employee.Details != nil || employee.OtherDetails != nil {
+			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil {
 			t.Errorf("%v : employee should be empty", testCase)
 		}
 		return
@@ -140,9 +104,7 @@ func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string
 
 func TestCopyStruct(t *testing.T) {
 	var fakeAge int32 = 12
-	detail2 := "world"
-	otherDetail2 := "world"
-	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}
+	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
 	employee := Employee{}
 
 	if err := copier.Copy(employee, &user); err == nil {
@@ -167,9 +129,7 @@ func TestCopyStruct(t *testing.T) {
 }
 
 func TestCopyFromStructToSlice(t *testing.T) {
-	detail2 := "world"
-	otherDetail2 := "world"
-	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
 	employees := []Employee{}
 
 	if err := copier.Copy(employees, &user); err != nil && len(employees) != 0 {
@@ -205,11 +165,7 @@ func TestCopyFromStructToSlice(t *testing.T) {
 }
 
 func TestCopyFromSliceToSlice(t *testing.T) {
-	detail2User1 := "world1"
-	detail2User2 := "world2"
-	otherDetail2User1 := "world1"
-	otherDetail2User2 := "world2"
-	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2User1}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2User1}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}, Details: &Details{Detail1: "hello", Detail2: &detail2User2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2User2}}}
+	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -245,9 +201,7 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 }
 
 func TestCopyFromSliceToSlice2(t *testing.T) {
-	detail2 := "world"
-	otherDetail2 := "world"
-	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}, nil}
+	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, nil}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -328,53 +282,279 @@ func TestEmbeddedAndBase(t *testing.T) {
 
 func TestStructField(t *testing.T) {
 	type Details struct {
-		Info  string
+		Info1 string
 		Info2 *string
 	}
-	type User struct {
+	type SimilarDetails struct {
+		Info1 string
+		Info2 *string
+	}
+	type UserWithDetailsPtr struct {
 		Details *Details
 	}
-	type Employee struct {
+	type UserWithDetails struct {
 		Details Details
 	}
+	type UserWithSimilarDetailsPtr struct {
+		Details *SimilarDetails
+	}
+	type UserWithSimilarDetails struct {
+		Details SimilarDetails
+	}
+	type EmployeeWithDetails struct {
+		Details Details
+	}
+	type EmployeeWithDetailsPtr struct {
+		Details *Details
+	}
+	type EmployeeWithSimilarDetails struct {
+		Details SimilarDetails
+	}
+	type EmployeeWithSimilarDetailsPtr struct {
+		Details *SimilarDetails
+	}
 
-	t.Run("Should work with same type", func(t *testing.T) {
-		info2 := "world"
-		from := User{Details: &Details{Info: "hello", Info2: &info2}}
-		to := User{}
-		copier.Copy(&to, from)
+	optionsDeepCopy := Option{
+		DeepCopy: true,
+	}
 
-		*to.Details.Info2 = "new value"
+	t.Run("Should work without deepCopy", func(t *testing.T) {
+		t.Run("Should work with same type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetailsPtr{}
+			copier.Copy(&to, from)
 
-		if to.Details == from.Details {
-			t.Errorf("TestStructField: copy Details failed since they need to have different address")
-		}
-		if to.Details.Info != from.Details.Info {
-			t.Errorf("should be the same")
-		}
-		if to.Details.Info2 == from.Details.Info2 {
-			t.Errorf("should be different")
-		}
+			*to.Details.Info2 = "new value"
+
+			if to.Details == from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have different address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 != from.Details.Info2 {
+				t.Errorf("should be the same")
+			}
+		})
+
+		t.Run("Should work with same type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetails{}
+			copier.Copy(&to, from)
+
+			*to.Details.Info2 = "new value"
+
+			if to.Details != from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have same address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 != from.Details.Info2 {
+				t.Errorf("should be the same")
+			}
+		})
+
+		t.Run("Should work with different type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with different type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from ptr field and to not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from not ptr field and to ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
 	})
 
-	t.Run("Should work with different type", func(t *testing.T) {
-		info2 := "world"
-		from := User{Details: &Details{Info: "hello", Info2: &info2}}
-		to := Employee{}
-		copier.Copy(&to, from)
+	t.Run("Should work with deepCopy", func(t *testing.T) {
+		t.Run("Should work with same type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetailsPtr{}
+			CopyWithOption(&to, from, optionsDeepCopy)
 
-		newValue := "new value"
-		to.Details.Info2 = &newValue
+			*to.Details.Info2 = "new value"
 
-		if to.Details.Info == "" {
-			t.Errorf("should not be empty")
-		}
-		if to.Details.Info != from.Details.Info {
-			t.Errorf("should be the same")
-		}
-		if to.Details.Info2 == from.Details.Info2 {
-			t.Errorf("should be different")
-		}
+			if to.Details == from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have different address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+		t.Run("Should work with same type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetails{}
+			CopyWithOption(&to, from, optionsDeepCopy)
+
+			*to.Details.Info2 = "new value"
+
+			if to.Details == from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have different address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with different type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with different type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from ptr field and to not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from not ptr field and to ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
 	})
 }
 

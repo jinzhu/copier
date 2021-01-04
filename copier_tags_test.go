@@ -1,6 +1,10 @@
-package copier
+package copier_test
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/jinzhu/copier"
+)
 
 type EmployeeTags struct {
 	Name    string `copier:"must"`
@@ -25,7 +29,7 @@ type User2 struct {
 func TestCopyTagIgnore(t *testing.T) {
 	employee := EmployeeTags{ID: 100}
 	user := User1{Name: "Dexter Ledesma", DOB: "1 November, 1970", Address: "21 Jump Street", ID: 12345}
-	Copy(&employee, user)
+	copier.Copy(&employee, user)
 	if employee.ID == user.ID {
 		t.Error("Was not expected to copy IDs")
 	}
@@ -42,5 +46,5 @@ func TestCopyTagMust(t *testing.T) {
 			t.Error("Expected a panic.")
 		}
 	}()
-	Copy(employee, user)
+	copier.Copy(employee, user)
 }

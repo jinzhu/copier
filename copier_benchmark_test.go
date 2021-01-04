@@ -17,8 +17,7 @@ func BenchmarkCopyStruct(b *testing.B) {
 
 func BenchmarkCopyStructFields(b *testing.B) {
 	var fakeAge int32 = 12
-	detail2 := "world"
-	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}}
+	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
 	for x := 0; x < b.N; x++ {
 		copier.Copy(&Employee{}, &user)
 	}
