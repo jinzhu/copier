@@ -110,7 +110,7 @@ func main() {
 ### Copy with Option
 
 ```go
-copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true})
+copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 ```
 
 ## Contributing
