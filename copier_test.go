@@ -643,7 +643,7 @@ func TestCopyMapOfInt(t *testing.T) {
 func TestCopyNonEmpty(t *testing.T) {
 	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
 	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
-	if err := copier.CopyWithOption(to, &from, Option{IgnoreEmpty: true}); err != nil {
+	if err := copier.CopyWithOption(to, &from, copier.Option{IgnoreEmpty: true}); err != nil {
 		t.Error("Should not raise error")
 	}
 
