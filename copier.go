@@ -126,7 +126,6 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty bool) (err err
 		// check source
 		if source.IsValid() {
 			fromTypeFields := deepFields(fromType)
-			// fmt.Printf("%#v", fromTypeFields)
 			// Copy from field to field or method
 			for _, field := range fromTypeFields {
 				name := field.Name
@@ -244,9 +243,6 @@ func indirectType(reflectType reflect.Type) reflect.Type {
 
 func set(to, from reflect.Value) bool {
 	if from.IsValid() {
-		if from.Kind() == reflect.Struct {
-			return false
-		}
 
 		if to.Kind() == reflect.Ptr {
 			// set `to` to nil if from is nil
@@ -259,12 +255,8 @@ func set(to, from reflect.Value) bool {
 			to = to.Elem()
 		}
 
-		if from.Kind() == reflect.Struct {
-			err := Copy(to, from)
-			if err != nil {
-				return false
-			}
-			return true
+		if to.Kind() == reflect.Struct {
+			return false
 		}
 
 		if from.Type().ConvertibleTo(to.Type()) {

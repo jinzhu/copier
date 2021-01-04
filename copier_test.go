@@ -14,16 +14,22 @@ type Details struct {
 	Detail2 *string
 }
 
+type SimilarDetails struct {
+	Detail1 string
+	Detail2 *string
+}
+
 type User struct {
-	Name     string
-	Birthday *time.Time
-	Nickname string
-	Role     string
-	Age      int32
-	FakeAge  *int32
-	Notes    []string
-	flags    []byte
-	Details  *Details
+	Name         string
+	Birthday     *time.Time
+	Nickname     string
+	Role         string
+	Age          int32
+	FakeAge      *int32
+	Notes        []string
+	flags        []byte
+	Details      *Details
+	OtherDetails Details
 }
 
 func (user User) DoubleAge() int32 {
@@ -31,17 +37,18 @@ func (user User) DoubleAge() int32 {
 }
 
 type Employee struct {
-	Name      string
-	Birthday  *time.Time
-	Nickname  *string
-	Age       int64
-	FakeAge   int
-	EmployeID int64
-	DoubleAge int32
-	SuperRule string
-	Notes     []string
-	flags     []byte
-	Details   *Details
+	Name         string
+	Birthday     *time.Time
+	Nickname     *string
+	Age          int64
+	FakeAge      int
+	EmployeID    int64
+	DoubleAge    int32
+	SuperRule    string
+	Notes        []string
+	flags        []byte
+	Details      *Details
+	OtherDetails *SimilarDetails
 }
 
 func (employee *Employee) Role(role string) {
@@ -80,10 +87,16 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	if !reflect.DeepEqual(employee.Notes, user.Notes) {
 		t.Errorf("%v: Copy from slice doesn't work", testCase)
 	}
-	if employee.Details.Detail1 != user.Details.Detail1 {
+	if employee.Details == nil || employee.Details.Detail1 != user.Details.Detail1 {
 		t.Errorf("%v: Copy to method doesn't work", testCase)
 	}
-	if employee.Details.Detail2 == user.Details.Detail2 {
+	if employee.Details == nil || employee.Details.Detail2 == user.Details.Detail2 {
+		t.Errorf("%v: Copy to method doesn't work", testCase)
+	}
+	if employee.OtherDetails == nil || employee.OtherDetails.Detail1 != user.OtherDetails.Detail1 {
+		t.Errorf("%v: Copy to method doesn't work", testCase)
+	}
+	if employee.OtherDetails == nil || employee.OtherDetails.Detail2 == user.OtherDetails.Detail2 {
 		t.Errorf("%v: Copy to method doesn't work", testCase)
 	}
 }
@@ -92,7 +105,8 @@ func TestCopySameStructWithPointerField(t *testing.T) {
 	var fakeAge int32 = 12
 	var currentTime time.Time = time.Now()
 	detail2 := "world"
-	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}}
+	otherDetail2 := "world"
+	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}
 	newUser := &User{}
 	copier.Copy(newUser, user)
 	if user.Birthday == newUser.Birthday {
@@ -106,12 +120,16 @@ func TestCopySameStructWithPointerField(t *testing.T) {
 	if user.Details == newUser.Details {
 		t.Errorf("TestCopySameStructWithPointerField: copy Details failed since they need to have different address")
 	}
+
+	if user.OtherDetails == newUser.OtherDetails {
+		t.Errorf("TestCopySameStructWithPointerField: copy OtherDetails failed since they need to have different address")
+	}
 }
 
 func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string) {
 	if user == nil {
 		if employee.Name != "" || employee.Nickname != nil || employee.Birthday != nil || employee.Age != 0 ||
-			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil || employee.Details != nil {
+			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil || employee.Details != nil || employee.OtherDetails != nil {
 			t.Errorf("%v : employee should be empty", testCase)
 		}
 		return
@@ -123,7 +141,8 @@ func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string
 func TestCopyStruct(t *testing.T) {
 	var fakeAge int32 = 12
 	detail2 := "world"
-	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}}
+	otherDetail2 := "world"
+	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}
 	employee := Employee{}
 
 	if err := copier.Copy(employee, &user); err == nil {
@@ -149,7 +168,8 @@ func TestCopyStruct(t *testing.T) {
 
 func TestCopyFromStructToSlice(t *testing.T) {
 	detail2 := "world"
-	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}}
+	otherDetail2 := "world"
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}
 	employees := []Employee{}
 
 	if err := copier.Copy(employees, &user); err != nil && len(employees) != 0 {
@@ -187,7 +207,9 @@ func TestCopyFromStructToSlice(t *testing.T) {
 func TestCopyFromSliceToSlice(t *testing.T) {
 	detail2User1 := "world1"
 	detail2User2 := "world2"
-	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2User1}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}, Details: &Details{Detail1: "hello", Detail2: &detail2User2}}}
+	otherDetail2User1 := "world1"
+	otherDetail2User2 := "world2"
+	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2User1}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2User1}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}, Details: &Details{Detail1: "hello", Detail2: &detail2User2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2User2}}}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -224,7 +246,8 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 
 func TestCopyFromSliceToSlice2(t *testing.T) {
 	detail2 := "world"
-	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}}, nil}
+	otherDetail2 := "world"
+	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}, Details: &Details{Detail1: "hello", Detail2: &detail2}, OtherDetails: Details{Detail1: "hello", Detail2: &otherDetail2}}, nil}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -440,7 +463,7 @@ func TestCopyMapOfInt(t *testing.T) {
 func TestCopyNonEmpty(t *testing.T) {
 	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
 	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
-	if err := copier.CopyWithOption(to, &from, copier.Option{IgnoreEmpty: true}); err != nil {
+	if err := CopyWithOption(to, &from, Option{IgnoreEmpty: true}); err != nil {
 		t.Error("Should not raise error")
 	}
 
