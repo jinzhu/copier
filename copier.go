@@ -46,6 +46,10 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 		amount  = 1
 		from    = indirect(reflect.ValueOf(fromValue))
 		to      = indirect(reflect.ValueOf(toValue))
+		options = Option{
+			IgnoreEmpty: ignoreEmpty,
+			DeepCopy:    deepCopy,
+		}
 	)
 
 	if !to.CanAddr() {
@@ -82,7 +86,7 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 
 			toValue := indirect(reflect.New(toType.Elem()))
 			if !set(toValue, from.MapIndex(k), deepCopy) {
-				err = Copy(toValue.Addr().Interface(), from.MapIndex(k).Interface())
+				err = CopyWithOption(toValue.Addr().Interface(), from.MapIndex(k).Interface(), options)
 				if err != nil {
 					continue
 				}
@@ -145,7 +149,7 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 					if toField := dest.FieldByName(name); toField.IsValid() {
 						if toField.CanSet() {
 							if !set(toField, fromField, deepCopy) {
-								if err := Copy(toField.Addr().Interface(), fromField.Interface()); err != nil {
+								if err := CopyWithOption(toField.Addr().Interface(), fromField.Interface(), options); err != nil {
 									return err
 								}
 							} else {
