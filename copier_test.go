@@ -582,7 +582,7 @@ func TestInterface(t *testing.T) {
 			GenOptions: outer,
 		}
 		to := DriverOptions{}
-		if err := Copy(&to, from); nil != err {
+		if err := copier.Copy(&to, from); nil != err {
 			t.Errorf("Unexpected error: %v", err)
 			return
 		}
@@ -605,7 +605,7 @@ func TestInterface(t *testing.T) {
 			GenOptions: outer,
 		}
 		to := DriverOptions{}
-		if err := CopyWithOption(&to, &from, copier.Option{
+		if err := copier.CopyWithOption(&to, &from, copier.Option{
 			DeepCopy: true,
 		}); nil != err {
 			t.Errorf("Unexpected error: %v", err)
