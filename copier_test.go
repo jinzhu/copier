@@ -558,6 +558,68 @@ func TestStructField(t *testing.T) {
 	})
 }
 
+func TestInterface(t *testing.T) {
+	type Inner struct {
+		IntPtr *int
+	}
+
+	type Outer struct {
+		Inner Inner
+	}
+
+	type DriverOptions struct {
+		GenOptions interface{}
+	}
+
+	t.Run("Should work without deepCopy", func(t *testing.T) {
+		intVal := 5
+		outer := Outer{
+			Inner: Inner{
+				IntPtr: &intVal,
+			},
+		}
+		from := DriverOptions{
+			GenOptions: outer,
+		}
+		to := DriverOptions{}
+		if err := Copy(&to, from); nil != err {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		*to.GenOptions.(Outer).Inner.IntPtr = 6
+
+		if to.GenOptions.(Outer).Inner.IntPtr != from.GenOptions.(Outer).Inner.IntPtr {
+			t.Errorf("should be the same")
+		}
+	})
+
+	t.Run("Should work with deepCopy", func(t *testing.T) {
+		intVal := 5
+		outer := Outer{
+			Inner: Inner{
+				IntPtr: &intVal,
+			},
+		}
+		from := DriverOptions{
+			GenOptions: outer,
+		}
+		to := DriverOptions{}
+		if err := CopyWithOption(&to, &from, copier.Option{
+			DeepCopy: true,
+		}); nil != err {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		*to.GenOptions.(Outer).Inner.IntPtr = 6
+
+		if to.GenOptions.(Outer).Inner.IntPtr == from.GenOptions.(Outer).Inner.IntPtr {
+			t.Errorf("should be different")
+		}
+	})
+}
+
 type someStruct struct {
 	IntField  int
 	UIntField uint64
