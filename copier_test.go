@@ -280,6 +280,284 @@ func TestEmbeddedAndBase(t *testing.T) {
 	}
 }
 
+func TestStructField(t *testing.T) {
+	type Details struct {
+		Info1 string
+		Info2 *string
+	}
+	type SimilarDetails struct {
+		Info1 string
+		Info2 *string
+	}
+	type UserWithDetailsPtr struct {
+		Details *Details
+	}
+	type UserWithDetails struct {
+		Details Details
+	}
+	type UserWithSimilarDetailsPtr struct {
+		Details *SimilarDetails
+	}
+	type UserWithSimilarDetails struct {
+		Details SimilarDetails
+	}
+	type EmployeeWithDetails struct {
+		Details Details
+	}
+	type EmployeeWithDetailsPtr struct {
+		Details *Details
+	}
+	type EmployeeWithSimilarDetails struct {
+		Details SimilarDetails
+	}
+	type EmployeeWithSimilarDetailsPtr struct {
+		Details *SimilarDetails
+	}
+
+	optionsDeepCopy := copier.Option{
+		DeepCopy: true,
+	}
+
+	t.Run("Should work without deepCopy", func(t *testing.T) {
+		t.Run("Should work with same type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetailsPtr{}
+			copier.Copy(&to, from)
+
+			*to.Details.Info2 = "new value"
+
+			if to.Details == from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have different address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 != from.Details.Info2 {
+				t.Errorf("should be the same")
+			}
+		})
+
+		t.Run("Should work with same type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetails{}
+			copier.Copy(&to, from)
+
+			*to.Details.Info2 = "new value"
+
+			if to.Details != from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have same address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 != from.Details.Info2 {
+				t.Errorf("should be the same")
+			}
+		})
+
+		t.Run("Should work with different type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with different type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from ptr field and to not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from not ptr field and to ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			copier.Copy(&to, from)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+	})
+
+	t.Run("Should work with deepCopy", func(t *testing.T) {
+		t.Run("Should work with same type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetailsPtr{}
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
+
+			*to.Details.Info2 = "new value"
+
+			if to.Details == from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have different address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+		t.Run("Should work with same type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := UserWithDetails{}
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
+
+			*to.Details.Info2 = "new value"
+
+			if to.Details == from.Details {
+				t.Errorf("TestStructField: copy Details failed since they need to have different address")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with different type and both ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with different type and both not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from ptr field and to not ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetailsPtr{Details: &Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetails{}
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from not ptr field and to ptr field", func(t *testing.T) {
+			info2 := "world"
+			from := UserWithDetails{Details: Details{Info1: "hello", Info2: &info2}}
+			to := EmployeeWithDetailsPtr{}
+			copier.CopyWithOption(&to, from, optionsDeepCopy)
+
+			newValue := "new value"
+			to.Details.Info2 = &newValue
+
+			if to.Details.Info1 == "" {
+				t.Errorf("should not be empty")
+			}
+			if to.Details.Info1 != from.Details.Info1 {
+				t.Errorf("should be the same")
+			}
+			if to.Details.Info2 == from.Details.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+	})
+}
+
 type someStruct struct {
 	IntField  int
 	UIntField uint64
