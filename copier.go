@@ -64,9 +64,17 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 	fromType := indirectType(from.Type())
 	toType := indirectType(to.Type())
 
+	if fromType.Kind() == reflect.Interface {
+		fromType = reflect.TypeOf(from.Interface())
+	}
+
+	if toType.Kind() == reflect.Interface {
+		toType = reflect.TypeOf(to.Interface())
+	}
+
 	// Just set it if possible to assign
 	// And need to do copy anyway if the type is struct
-	if fromType.Kind() != reflect.Struct && from.Type().AssignableTo(to.Type()) {
+	if fromType.Kind() != reflect.Struct && (!deepCopy || fromType.Kind() != reflect.Map) && from.Type().AssignableTo(to.Type()) {
 		to.Set(from)
 		return
 	}
@@ -121,6 +129,13 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 		} else {
 			source = indirect(from)
 			dest = indirect(to)
+		}
+
+		destKind := dest.Kind()
+		initDest := false
+		if destKind == reflect.Interface {
+			initDest = true
+			dest = indirect(reflect.New(toType))
 		}
 
 		// Get tag options
@@ -203,6 +218,9 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 				to.Set(reflect.Append(to, dest))
 			}
 		}
+		if initDest {
+			to.Set(dest)
+		}
 		err = checkBitFlags(tagBitFlags)
 	}
 	return
@@ -261,8 +279,16 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 			to = to.Elem()
 		}
 
-		if deepCopy && to.Kind() == reflect.Struct {
-			return false
+		if deepCopy {
+			toKind := to.Kind()
+			if toKind == reflect.Interface && to.IsNil() {
+				to.Set(reflect.New(reflect.TypeOf(from.Interface())).Elem())
+				toKind = reflect.TypeOf(to.Interface()).Kind()
+			}
+
+			if toKind == reflect.Struct || toKind == reflect.Map {
+				return false
+			}
 		}
 
 		if from.Type().ConvertibleTo(to.Type()) {
