@@ -74,7 +74,7 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 
 	// Just set it if possible to assign
 	// And need to do copy anyway if the type is struct
-	if fromType.Kind() != reflect.Struct && (!deepCopy || fromType.Kind() != reflect.Map) && from.Type().AssignableTo(to.Type()) {
+	if fromType.Kind() != reflect.Struct && (!deepCopy || fromType.Kind() != reflect.Map) && from.Kind() != reflect.Slice && from.Type().AssignableTo(to.Type()) {
 		to.Set(from)
 		return
 	}
@@ -101,6 +101,24 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 			}
 			to.SetMapIndex(toKey, toValue)
 		}
+	}
+
+	if from.Kind() == reflect.Slice && to.Kind() == reflect.Slice && fromType.ConvertibleTo(toType) {
+		if to.IsNil() {
+			slice := reflect.MakeSlice(reflect.SliceOf(toType), from.Len(), from.Cap())
+			to.Set(slice)
+		}
+		for i := 0; i < from.Len(); i++ {
+			toValue := indirect(reflect.New(toType))
+			if !set(toValue, from.Index(i), deepCopy) {
+				err = CopyWithOption(toValue.Addr().Interface(), from.Index(i).Interface(), options)
+				if err != nil {
+					continue
+				}
+			}
+			to.Index(i).Set(toValue)
+		}
+		return
 	}
 
 	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
@@ -285,8 +303,7 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 				to.Set(reflect.New(reflect.TypeOf(from.Interface())).Elem())
 				toKind = reflect.TypeOf(to.Interface()).Kind()
 			}
-
-			if toKind == reflect.Struct || toKind == reflect.Map {
+			if toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice {
 				return false
 			}
 		}
