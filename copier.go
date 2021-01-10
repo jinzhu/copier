@@ -81,7 +81,7 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 
 	if fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
 		if !fromType.Key().ConvertibleTo(toType.Key()) {
-			return
+			return errors.New("map's key type doesn't match")
 		}
 		if to.IsNil() {
 			to.Set(reflect.MakeMapWithSize(toType, from.Len()))
@@ -92,14 +92,26 @@ func copy(toValue interface{}, fromValue interface{}, ignoreEmpty, deepCopy bool
 				continue
 			}
 
-			toValue := indirect(reflect.New(toType.Elem()))
+			elemType := toType.Elem()
+			for elemType.Kind() == reflect.Ptr {
+				elemType = elemType.Elem()
+			}
+			toValue := indirect(reflect.New(elemType))
 			if !set(toValue, from.MapIndex(k), deepCopy) {
 				err = CopyWithOption(toValue.Addr().Interface(), from.MapIndex(k).Interface(), options)
 				if err != nil {
 					continue
 				}
 			}
-			to.SetMapIndex(toKey, toValue)
+
+			for {
+				if elemType == toType.Elem() {
+					to.SetMapIndex(toKey, toValue)
+					break
+				}
+				elemType = reflect.PtrTo(elemType)
+				toValue = toValue.Addr()
+			}
 		}
 	}
 
