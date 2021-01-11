@@ -68,18 +68,15 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	// Just set it if possible to assign for normal types
-	if from.Kind() != reflect.Slice && (from.Type().AssignableTo(to.Type()) || from.Type().ConvertibleTo(to.Type())) {
-		switch fromType.Kind() {
-		case reflect.String, reflect.Bool, reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr, reflect.Float32, reflect.Float64:
-			if !isPtrFrom || !opt.DeepCopy {
-				to.Set(from.Convert(to.Type()))
-			} else {
-				fromCopy := reflect.New(from.Type())
-				fromCopy.Set(from.Elem())
-				to.Set(fromCopy.Convert(to.Type()))
-			}
-			return
+	if from.Kind() != reflect.Slice && from.Kind() != reflect.Struct && from.Kind() != reflect.Map && (from.Type().AssignableTo(to.Type()) || from.Type().ConvertibleTo(to.Type())) {
+		if !isPtrFrom || !opt.DeepCopy {
+			to.Set(from.Convert(to.Type()))
+		} else {
+			fromCopy := reflect.New(from.Type())
+			fromCopy.Set(from.Elem())
+			to.Set(fromCopy.Convert(to.Type()))
 		}
+		return
 	}
 
 	if fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
