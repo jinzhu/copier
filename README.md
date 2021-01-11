@@ -14,6 +14,7 @@
 * Copy from map to map
 * Enforce copying a field with a tag
 * Ignore a field with a tag
+* Deep Copy
 
 ## Usage
 
