@@ -194,7 +194,35 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 				if fromField := source.FieldByName(name); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
 					// has field
-					if toField := dest.FieldByName(name); toField.IsValid() {
+
+					// handle anonymous field
+					destFieldNotSet := false
+					if f, ok := dest.Type().FieldByName(name); ok {
+						for _, x := range f.Index {
+							destFieldKind := dest.Field(x).Kind()
+							if destFieldKind != reflect.Ptr {
+								continue
+							}
+
+							if !dest.Field(x).IsNil() {
+								continue
+							}
+
+							if !dest.Field(x).CanSet() {
+								destFieldNotSet = true
+								break
+							}
+
+							newValue := reflect.New(dest.Field(x).Type().Elem())
+							dest.Field(x).Set(newValue)
+						}
+					}
+
+					toField := reflect.Value{}
+					if !destFieldNotSet {
+						toField = dest.FieldByName(name)
+					}
+					if toField.IsValid() {
 						if toField.CanSet() {
 							if !set(toField, fromField, opt.DeepCopy) {
 								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {

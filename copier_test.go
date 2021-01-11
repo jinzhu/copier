@@ -818,6 +818,125 @@ func TestSlice(t *testing.T) {
 	})
 }
 
+func TestAnonymousFields(t *testing.T) {
+	t.Run("Should work with unexported ptr fields", func(t *testing.T) {
+		type nested struct {
+			A string
+		}
+		type parentA struct {
+			*nested
+		}
+		type parentB struct {
+			*nested
+		}
+
+		from := parentA{nested: &nested{A: "a"}}
+		to := parentB{}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{
+			DeepCopy: true,
+		})
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from.nested.A = "b"
+
+		if to.nested != nil {
+			t.Errorf("should be nil")
+		}
+	})
+	t.Run("Should work with unexported fields", func(t *testing.T) {
+		type nested struct {
+			A string
+		}
+		type parentA struct {
+			nested
+		}
+		type parentB struct {
+			nested
+		}
+
+		from := parentA{nested: nested{A: "a"}}
+		to := parentB{}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{
+			DeepCopy: true,
+		})
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from.nested.A = "b"
+
+		if to.nested.A == from.nested.A {
+			t.Errorf("should be different")
+		}
+	})
+
+	t.Run("Should work with exported ptr fields", func(t *testing.T) {
+		type Nested struct {
+			A string
+		}
+		type parentA struct {
+			*Nested
+		}
+		type parentB struct {
+			*Nested
+		}
+
+		fieldValue := "a"
+		from := parentA{Nested: &Nested{A: fieldValue}}
+		to := parentB{}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{
+			DeepCopy: true,
+		})
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from.Nested.A = "b"
+
+		if to.Nested.A != fieldValue {
+			t.Errorf("should not change")
+		}
+	})
+
+	t.Run("Should work with exported fields", func(t *testing.T) {
+		type Nested struct {
+			A string
+		}
+		type parentA struct {
+			Nested
+		}
+		type parentB struct {
+			Nested
+		}
+
+		fieldValue := "a"
+		from := parentA{Nested: Nested{A: fieldValue}}
+		to := parentB{}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{
+			DeepCopy: true,
+		})
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from.Nested.A = "b"
+
+		if to.Nested.A != fieldValue {
+			t.Errorf("should not change")
+		}
+	})
+}
+
 type someStruct struct {
 	IntField  int
 	UIntField uint64
