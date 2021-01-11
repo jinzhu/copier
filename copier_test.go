@@ -689,6 +689,135 @@ func TestInterface(t *testing.T) {
 	})
 }
 
+func TestSlice(t *testing.T) {
+	type ElemOption struct {
+		Value int
+	}
+
+	type A struct {
+		X       []int
+		Options []ElemOption
+	}
+
+	type B struct {
+		X       []int
+		Options []ElemOption
+	}
+
+	t.Run("Should work with simple slice", func(t *testing.T) {
+		from := []int{1, 2}
+		var to []int
+
+		if err := copier.Copy(&to, from); nil != err {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from[0] = 3
+		from[1] = 4
+
+		if to[0] == from[0] {
+			t.Errorf("should be different")
+		}
+
+		if len(to) != len(from) {
+			t.Errorf("should be the same length, got len(from): %v, len(to): %v", len(from), len(to))
+		}
+	})
+
+	t.Run("Should work with empty slice", func(t *testing.T) {
+		from := []int{}
+		to := []int{}
+
+		if err := copier.Copy(&to, from); nil != err {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		if to == nil {
+			t.Errorf("should be not nil")
+		}
+	})
+
+	t.Run("Should work without deepCopy", func(t *testing.T) {
+		x := []int{1, 2}
+		options := []ElemOption{
+			{Value: 10},
+			{Value: 20},
+		}
+		from := A{X: x, Options: options}
+		to := B{}
+
+		if err := copier.Copy(&to, from); nil != err {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from.X[0] = 3
+		from.X[1] = 4
+		from.Options[0].Value = 30
+		from.Options[1].Value = 40
+
+		if to.X[0] != from.X[0] {
+			t.Errorf("should be the same")
+		}
+
+		if len(to.X) != len(from.X) {
+			t.Errorf("should be the same length, got len(from.X): %v, len(to.X): %v", len(from.X), len(to.X))
+		}
+
+		if to.Options[0].Value != from.Options[0].Value {
+			t.Errorf("should be the same")
+		}
+
+		if to.Options[0].Value != from.Options[0].Value {
+			t.Errorf("should be the same")
+		}
+
+		if len(to.Options) != len(from.Options) {
+			t.Errorf("should be the same")
+		}
+	})
+
+	t.Run("Should work with deepCopy", func(t *testing.T) {
+		x := []int{1, 2}
+		options := []ElemOption{
+			{Value: 10},
+			{Value: 20},
+		}
+		from := A{X: x, Options: options}
+		to := B{}
+
+		if err := copier.CopyWithOption(&to, from, copier.Option{
+			DeepCopy: true,
+		}); nil != err {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from.X[0] = 3
+		from.X[1] = 4
+		from.Options[0].Value = 30
+		from.Options[1].Value = 40
+
+		if to.X[0] == from.X[0] {
+			t.Errorf("should be different")
+		}
+
+		if len(to.X) != len(from.X) {
+			t.Errorf("should be the same length, got len(from.X): %v, len(to.X): %v", len(from.X), len(to.X))
+		}
+
+		if to.Options[0].Value == from.Options[0].Value {
+			t.Errorf("should be different")
+		}
+
+		if len(to.Options) != len(from.Options) {
+			t.Errorf("should be the same")
+		}
+	})
+}
+
 type someStruct struct {
 	IntField  int
 	UIntField uint64
