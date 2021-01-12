@@ -190,12 +190,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				}
 
 				if fromField := source.FieldByName(name); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
-					// has field
-
-					// handle anonymous field
+					// process for nested anonymous field
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(name); ok {
-						for _, x := range f.Index {
+						for idx, x := range f.Index {
 							destFieldKind := dest.Field(x).Kind()
 							if destFieldKind != reflect.Ptr {
 								continue
@@ -210,15 +208,16 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 								break
 							}
 
-							newValue := reflect.New(dest.Field(x).Type().Elem())
+							newValue := reflect.New(dest.FieldByIndex(f.Index[0 : idx+1]).Type().Elem())
 							dest.Field(x).Set(newValue)
 						}
 					}
 
-					toField := reflect.Value{}
-					if !destFieldNotSet {
-						toField = dest.FieldByName(name)
+					if destFieldNotSet {
+						break
 					}
+
+					toField := dest.FieldByName(name)
 					if toField.IsValid() {
 						if toField.CanSet() {
 							if !set(toField, fromField, opt.DeepCopy) {
