@@ -1154,8 +1154,8 @@ func TestScanFromPtrToSqlNullable(t *testing.T) {
 		t.Errorf("to.T1 should be Zero but %v", to.T1)
 	}
 
-	if to.T2 != nil {
-		t.Errorf("to.T2 should be nil but %v", to.T2)
+	if to.T2 != nil && !to.T2.IsZero() {
+		t.Errorf("to.T2 should be Zero but %v", to.T2)
 	}
 
 	now := time.Now()
