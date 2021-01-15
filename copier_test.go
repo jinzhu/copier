@@ -1,6 +1,7 @@
 package copier_test
 
 import (
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -171,7 +172,7 @@ func TestCopyFromStructToSlice(t *testing.T) {
 }
 
 func TestCopyFromSliceToSlice(t *testing.T) {
-	users := []User{User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, User{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
+	users := []User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, {Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
 	employees := []Employee{}
 
 	if copier.Copy(&employees, users); len(employees) != 2 {
@@ -1109,5 +1110,77 @@ func TestScanner(t *testing.T) {
 
 	if s.V.V != s2.V.V {
 		t.Errorf("Field V should be copied")
+	}
+}
+
+func TestScanFromPtrToSqlNullable(t *testing.T) {
+
+	var (
+		from struct {
+			S    string
+			Sptr *string
+			T1   sql.NullTime
+			T2   sql.NullTime
+			T3   *time.Time
+		}
+
+		to struct {
+			S    sql.NullString
+			Sptr sql.NullString
+			T1   time.Time
+			T2   *time.Time
+			T3   sql.NullTime
+		}
+
+		s string
+
+		err error
+	)
+
+	s = "test"
+	from.S = s
+	from.Sptr = &s
+
+	if from.T1.Valid || from.T2.Valid {
+		t.Errorf("Must be not valid")
+	}
+
+	err = copier.Copy(&to, from)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if !to.T1.IsZero() {
+		t.Errorf("to.T1 should be Zero but %v", to.T1)
+	}
+
+	if to.T2 != nil && !to.T2.IsZero() {
+		t.Errorf("to.T2 should be Zero but %v", to.T2)
+	}
+
+	now := time.Now()
+
+	from.T1.Scan(now)
+	from.T2.Scan(now)
+
+	err = copier.Copy(&to, from)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if to.S.String != from.S {
+		t.Errorf("Field S should be copied")
+	}
+
+	if to.Sptr.String != *from.Sptr {
+		t.Errorf("Field Sptr should be copied")
+	}
+
+	if from.T1.Time != to.T1 {
+		t.Errorf("Fields T1 fields should be equal")
+	}
+
+	if from.T2.Time != *to.T2 {
+		t.Errorf("Fields T2 fields should be equal")
 	}
 }

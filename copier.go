@@ -2,6 +2,7 @@ package copier
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strings"
@@ -333,8 +334,22 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 				to.Set(reflect.Zero(to.Type()))
 				return true
 			} else if to.IsNil() {
+				// `from`         -> `to`
+				// sql.NullString -> *string
+				if fromValuer, ok := driverValuer(from); ok {
+					v, err := fromValuer.Value()
+					if err != nil {
+						return false
+					}
+					// if `from` is not valid do nothing with `to`
+					if v == nil {
+						return true
+					}
+				}
+				// allocate new `to` variable with default value (eg. *string -> new(string))
 				to.Set(reflect.New(to.Type().Elem()))
 			}
+			// depointer `to`
 			to = to.Elem()
 		}
 
@@ -351,9 +366,38 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 
 		if from.Type().ConvertibleTo(to.Type()) {
 			to.Set(from.Convert(to.Type()))
-		} else if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
-			if err := scanner.Scan(from.Interface()); err != nil {
+		} else if toScanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+			// `from`  -> `to`
+			// *string -> sql.NullString
+			if from.Kind() == reflect.Ptr {
+				// if `from` is nil do nothing with `to`
+				if from.IsNil() {
+					return true
+				}
+				// depointer `from`
+				from = indirect(from)
+			}
+			// `from` -> `to`
+			// string -> sql.NullString
+			// set `to` by invoking method Scan(`from`)
+			err := toScanner.Scan(from.Interface())
+			if err != nil {
 				return false
+			}
+		} else if fromValuer, ok := driverValuer(from); ok {
+			// `from`         -> `to`
+			// sql.NullString -> string
+			v, err := fromValuer.Value()
+			if err != nil {
+				return false
+			}
+			// if `from` is not valid do nothing with `to`
+			if v == nil {
+				return true
+			}
+			rv := reflect.ValueOf(v)
+			if rv.Type().AssignableTo(to.Type()) {
+				to.Set(rv)
 			}
 		} else if from.Kind() == reflect.Ptr {
 			return set(to, from.Elem(), deepCopy)
@@ -410,5 +454,16 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 			}
 		}
 	}
+	return
+}
+
+func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
+
+	if !v.CanAddr() {
+		i, ok = v.Interface().(driver.Valuer)
+		return
+	}
+
+	i, ok = v.Addr().Interface().(driver.Valuer)
 	return
 }
