@@ -120,15 +120,12 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			to.Set(slice)
 		}
 		for i := 0; i < from.Len(); i++ {
-			toValue := indirect(reflect.New(toType))
-			if !set(toValue, from.Index(i), opt.DeepCopy) {
-				err = CopyWithOption(toValue.Addr().Interface(), from.Index(i).Interface(), opt)
+			if !set(to.Index(i), from.Index(i), opt.DeepCopy) {
+				err = CopyWithOption(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
 				if err != nil {
 					continue
 				}
 			}
-
-			set(to.Index(i), toValue, opt.DeepCopy)
 		}
 		return
 	}
