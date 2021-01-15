@@ -2,7 +2,6 @@ package copier_test
 
 import (
 	"errors"
-	"reflect"
 	"testing"
 	"time"
 
@@ -33,7 +32,7 @@ type Employee struct {
 	EmployeID int64
 	DoubleAge int32
 	SuperRule string
-	Notes     []string
+	Notes     []*string
 	flags     []byte
 }
 
@@ -70,8 +69,15 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	if employee.SuperRule != "Super "+user.Role {
 		t.Errorf("%v: Copy to method doesn't work", testCase)
 	}
-	if !reflect.DeepEqual(employee.Notes, user.Notes) {
-		t.Errorf("%v: Copy from slice doesn't work", testCase)
+
+	if len(employee.Notes) != len(user.Notes) {
+		t.Fatalf("%v: Copy from slice doesn't work, employee notes len: %v, user: %v", testCase, len(employee.Notes), len(user.Notes))
+	}
+
+	for idx, note := range user.Notes {
+		if note != *employee.Notes[idx] {
+			t.Fatalf("%v: Copy from slice doesn't work, notes idx: %v employee: %v user: %v", testCase, idx, *employee.Notes[idx], note)
+		}
 	}
 }
 

@@ -33,7 +33,10 @@ func BenchmarkNamaCopy(b *testing.B) {
 			Age:       int64(user.Age),
 			FakeAge:   int(*user.FakeAge),
 			DoubleAge: user.DoubleAge(),
-			Notes:     user.Notes,
+		}
+
+		for _, note := range user.Notes {
+			employee.Notes = append(employee.Notes, &note)
 		}
 		employee.Role(user.Role)
 	}
