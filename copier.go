@@ -223,11 +223,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
 									return err
 								}
-							} else {
-								if fieldFlags != 0 {
-									// Note that a copy was made
-									tagBitFlags[name] = fieldFlags | hasCopied
-								}
+							}
+							if fieldFlags != 0 {
+								// Note that a copy was made
+								tagBitFlags[name] = fieldFlags | hasCopied
 							}
 						}
 					} else {
