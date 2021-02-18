@@ -193,6 +193,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(name); ok {
 						for idx, x := range f.Index {
+							if x >= dest.NumField() {
+								continue
+							}
+
 							destFieldKind := dest.Field(x).Kind()
 							if destFieldKind != reflect.Ptr {
 								continue
