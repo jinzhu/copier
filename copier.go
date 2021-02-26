@@ -194,27 +194,24 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					// process for nested anonymous field
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(name); ok {
-						for idx, x := range f.Index {
-							if x >= dest.NumField() {
+						for idx := range f.Index {
+							destField := dest.FieldByIndex(f.Index[:idx+1])
+
+							if destField.Kind() != reflect.Ptr {
 								continue
 							}
 
-							destFieldKind := dest.Field(x).Kind()
-							if destFieldKind != reflect.Ptr {
+							if !destField.IsNil() {
 								continue
 							}
-
-							if !dest.Field(x).IsNil() {
-								continue
-							}
-
-							if !dest.Field(x).CanSet() {
+							if !destField.CanSet() {
 								destFieldNotSet = true
 								break
 							}
 
-							newValue := reflect.New(dest.FieldByIndex(f.Index[0 : idx+1]).Type().Elem())
-							dest.Field(x).Set(newValue)
+							// destField is a nil pointer that can be set
+							newValue := reflect.New(destField.Type().Elem())
+							destField.Set(newValue)
 						}
 					}
 
