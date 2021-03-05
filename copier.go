@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"github.com/golang/groupcache/lru"
 	"reflect"
 	"strings"
 )
@@ -32,17 +33,65 @@ type Option struct {
 	DeepCopy    bool
 }
 
+type TypePair struct {
+	SrcType reflect.Type
+	DstType reflect.Type
+}
+
+type TypedCopier interface {
+	Copy(dstValue, srcValue reflect.Value) error
+	Pairs() []TypePair
+}
+
+type Copier interface {
+	Copy(toValue interface{}, fromValue interface{}) (err error)
+	CopyWithOption(toValue interface{}, fromValue interface{}, opt Option) (err error)
+	Register(copiers ...TypedCopier)
+}
+
+type copy struct {
+	typeCache *lru.Cache
+}
+
+// Instantiation to add original conversion processing for each type pair
+func NewCopier() Copier {
+	return &copy{
+		typeCache:   lru.New(1000),
+	}
+}
+
 // Copy copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
-	return copier(toValue, fromValue, Option{})
+	c := NewCopier()
+	return c.Copy(toValue, fromValue)
 }
 
 // CopyWithOption copy with option
 func CopyWithOption(toValue interface{}, fromValue interface{}, opt Option) (err error) {
-	return copier(toValue, fromValue, opt)
+	c := NewCopier()
+	return c.CopyWithOption(toValue, fromValue, opt)
 }
 
-func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) {
+// Copy copy things
+func (c copy) Copy(toValue interface{}, fromValue interface{}) (err error) {
+	return c.copier(toValue, fromValue, Option{})
+}
+
+// CopyWithOption copy with option
+func (c copy) CopyWithOption(toValue interface{}, fromValue interface{}, opt Option) (err error) {
+	return c.copier(toValue, fromValue, opt)
+}
+
+// Register TypedCopier
+func (c *copy) Register(copiers ...TypedCopier) {
+	for _, co := range copiers {
+		for _, pair := range co.Pairs() {
+			c.typeCache.Add(pair, co)
+		}
+	}
+}
+
+func (c copy) copier(toValue interface{}, fromValue interface{}, opt Option) (err error) {
 	var (
 		isSlice bool
 		amount  = 1
@@ -93,14 +142,14 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 		for _, k := range from.MapKeys() {
 			toKey := indirect(reflect.New(toType.Key()))
-			if !set(toKey, k, opt.DeepCopy) {
+			if !c.set(toKey, k, opt.DeepCopy) {
 				return fmt.Errorf("%w map, old key: %v, new key: %v", ErrNotSupported, k.Type(), toType.Key())
 			}
 
 			elemType, _ := indirectType(toType.Elem())
 			toValue := indirect(reflect.New(elemType))
-			if !set(toValue, from.MapIndex(k), opt.DeepCopy) {
-				if err = copier(toValue.Addr().Interface(), from.MapIndex(k).Interface(), opt); err != nil {
+			if !c.set(toValue, from.MapIndex(k), opt.DeepCopy) {
+				if err = c.copier(toValue.Addr().Interface(), from.MapIndex(k).Interface(), opt); err != nil {
 					return err
 				}
 			}
@@ -123,8 +172,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			to.Set(slice)
 		}
 		for i := 0; i < from.Len(); i++ {
-			if !set(to.Index(i), from.Index(i), opt.DeepCopy) {
-				err = CopyWithOption(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
+			if !c.set(to.Index(i), from.Index(i), opt.DeepCopy) {
+				err = c.CopyWithOption(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
 				if err != nil {
 					continue
 				}
@@ -222,8 +271,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					toField := dest.FieldByName(name)
 					if toField.IsValid() {
 						if toField.CanSet() {
-							if !set(toField, fromField, opt.DeepCopy) {
-								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
+							if !c.set(toField, fromField, opt.DeepCopy) {
+								if err := c.copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
 									return err
 								}
 							} else {
@@ -264,7 +313,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					if toField := dest.FieldByName(name); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
 						if len(values) >= 1 {
-							set(toField, values[0], opt.DeepCopy)
+							c.set(toField, values[0], opt.DeepCopy)
 						}
 					}
 				}
@@ -329,7 +378,15 @@ func indirectType(reflectType reflect.Type) (_ reflect.Type, isPtr bool) {
 	return reflectType, isPtr
 }
 
-func set(to, from reflect.Value, deepCopy bool) bool {
+func (c copy) set(to, from reflect.Value, deepCopy bool) bool {
+	if from.IsValid() && from.IsValid() {
+		if ok, err := c.typedCopyFunc(to, from); err != nil {
+			return false
+		} else if ok {
+			return true
+		}
+	}
+
 	if from.IsValid() {
 		if to.Kind() == reflect.Ptr {
 			// set `to` to nil if from is nil
@@ -403,13 +460,28 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 				to.Set(rv)
 			}
 		} else if from.Kind() == reflect.Ptr {
-			return set(to, from.Elem(), deepCopy)
+			return c.set(to, from.Elem(), deepCopy)
 		} else {
 			return false
 		}
 	}
 
 	return true
+}
+
+func (c copy) typedCopyFunc(to, from reflect.Value) (copied bool, err error) {
+	pair := TypePair{
+		SrcType: from.Type(),
+		DstType: to.Type(),
+	}
+	if cpr, ok := c.typeCache.Get(pair); ok {
+		copier := cpr.(TypedCopier)
+		if err := copier.Copy(to, from); err != nil {
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
 }
 
 // parseTags Parses struct tags and returns uint8 bit flags.
