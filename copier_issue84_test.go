@@ -1,7 +1,6 @@
 package copier_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -81,9 +80,7 @@ func TestIssue84(t *testing.T) {
 		destObj2 := NotWork{}
 
 		copier.CopyWithOption(&destObj1, &workObj, copier.Option{IgnoreEmpty: true, DeepCopy: false})
-		fmt.Println(destObj1)
 
 		copier.CopyWithOption(&destObj2, &notWorkObj, copier.Option{IgnoreEmpty: true, DeepCopy: false})
-		fmt.Println(destObj2)
 	})
 }

@@ -125,7 +125,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 		for i := 0; i < from.Len(); i++ {
 			if to.Len() < i+1 {
-				to = reflect.Append(to, reflect.New(to.Type().Elem()).Elem())
+				to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
 			}
 
 			if !set(to.Index(i), from.Index(i), opt.DeepCopy) {
