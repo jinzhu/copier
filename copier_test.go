@@ -3,6 +3,7 @@ package copier_test
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -1208,5 +1209,34 @@ func TestScanFromPtrToSqlNullable(t *testing.T) {
 
 	if from.T2.Time != *to.T2 {
 		t.Errorf("Fields T2 fields should be equal")
+	}
+}
+
+func TestDeepCopyInterface(t *testing.T) {
+	var m = make(map[string]string)
+	m["a"] = "ccc"
+
+	from := []interface{}{[]int{7, 8, 9}, 2, 3, m, errors.New("aaaa")}
+	var to []interface{}
+
+	copier.CopyWithOption(&to, &from, copier.Option{
+		IgnoreEmpty: false,
+		DeepCopy:    true,
+	})
+
+	from[0].([]int)[0] = 10
+	from[1] = "3"
+	from[3].(map[string]string)["a"] = "bbb"
+
+	if fmt.Sprint(to[0]) != fmt.Sprint([]int{7, 8, 9}) {
+		t.Errorf("to value failed to be deep copied")
+	}
+
+	if fmt.Sprint(to[1]) != "2" {
+		t.Errorf("to value failed to be deep copied")
+	}
+
+	if to[3].(map[string]string)["a"] != "ccc" {
+		t.Errorf("to value failed to be deep copied")
 	}
 }

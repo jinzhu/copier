@@ -67,7 +67,12 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	if toType.Kind() == reflect.Interface {
-		toType = reflect.TypeOf(to.Interface())
+		toType, _ = indirectType(reflect.TypeOf(to.Interface()))
+		oldTo := to
+		to = reflect.New(reflect.TypeOf(to.Interface())).Elem()
+		defer func() {
+			oldTo.Set(to)
+		}()
 	}
 
 	// Just set it if possible to assign for normal types
