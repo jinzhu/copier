@@ -122,7 +122,12 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)
 		}
+
 		for i := 0; i < from.Len(); i++ {
+			if to.Len() < i+1 {
+				to = reflect.Append(to, reflect.New(to.Type().Elem()).Elem())
+			}
+
 			if !set(to.Index(i), from.Index(i), opt.DeepCopy) {
 				err = CopyWithOption(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
 				if err != nil {
