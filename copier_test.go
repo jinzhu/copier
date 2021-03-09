@@ -243,27 +243,30 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 }
 
-type CollectionAlias struct {
-	CollectionName string `json:"collection_name"`
-	Name           string `json:"name"`
-}
-
-func createNewCollectionAlias(collectionName string, name string) *CollectionAlias {
-	return &CollectionAlias{
-		CollectionName: collectionName,
-		Name:           name,
-	}
-}
-
 func TestCopyFromSliceToSlice3(t *testing.T) {
+	type CollectionAlias struct {
+		CollectionName string `json:"collection_name"`
+		Name           string `json:"name"`
+	}
+
 	expectedResult := []*CollectionAlias{
-		createNewCollectionAlias("collection", "collection_alias1"),
-		createNewCollectionAlias("collection", "collection_alias2"),
-		createNewCollectionAlias("collection", "collection_alias3"),
+		{"collection", "collection_alias1"},
+		{"collection", "collection_alias2"},
+		{"collection", "collection_alias3"},
 	}
 
 	mockedResult := []*CollectionAlias{}
 	copier.Copy(&mockedResult, &expectedResult)
+
+	if len(mockedResult) != len(expectedResult) {
+		t.Fatalf("failed to copy results")
+	}
+
+	for idx := range mockedResult {
+		if mockedResult[idx].Name != mockedResult[idx].Name || mockedResult[idx].CollectionName != mockedResult[idx].CollectionName {
+			t.Fatalf("failed to copy results")
+		}
+	}
 }
 
 func TestEmbeddedAndBase(t *testing.T) {
