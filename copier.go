@@ -299,9 +299,17 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 		if isSlice {
 			if dest.Addr().Type().AssignableTo(to.Type().Elem()) {
-				to.Set(reflect.Append(to, dest.Addr()))
+				if to.Len() < i+1 {
+					to.Set(reflect.Append(to, dest.Addr()))
+				} else {
+					set(to.Index(i), dest.Addr(), opt.DeepCopy)
+				}
 			} else if dest.Type().AssignableTo(to.Type().Elem()) {
-				to.Set(reflect.Append(to, dest))
+				if to.Len() < i+1 {
+					to.Set(reflect.Append(to, dest))
+				} else {
+					set(to.Index(i), dest, opt.DeepCopy)
+				}
 			}
 		} else if initDest {
 			to.Set(dest)
