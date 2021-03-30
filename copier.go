@@ -134,7 +134,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			}
 
 			if !set(to.Index(i), from.Index(i), opt.DeepCopy) {
-				err = CopyWithOption(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
+				// ignore error while copy slice element
+				err = copier(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
 				if err != nil {
 					continue
 				}
@@ -285,13 +286,25 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, dest.Addr()))
 				} else {
-					set(to.Index(i), dest.Addr(), opt.DeepCopy)
+					if !set(to.Index(i), dest.Addr(), opt.DeepCopy) {
+						// ignore error while copy slice element
+						err = copier(to.Index(i).Addr().Interface(), dest.Addr().Interface(), opt)
+						if err != nil {
+							continue
+						}
+					}
 				}
 			} else if dest.Type().AssignableTo(to.Type().Elem()) {
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, dest))
 				} else {
-					set(to.Index(i), dest, opt.DeepCopy)
+					if !set(to.Index(i), dest, opt.DeepCopy) {
+						// ignore error while copy slice element
+						err = copier(to.Index(i).Addr().Interface(), dest.Interface(), opt)
+						if err != nil {
+							continue
+						}
+					}
 				}
 			}
 		} else if initDest {
