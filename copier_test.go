@@ -697,6 +697,30 @@ func TestMapInterface(t *testing.T) {
 			t.Errorf("should be different")
 		}
 	})
+
+	t.Run("Test copy map with nil interface", func(t *testing.T) {
+		from := map[string]interface{}{"eventId": nil}
+		to := map[string]interface{}{"eventId": nil}
+		copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+		if v, ok := to["eventId"]; !ok || v != nil {
+			t.Errorf("failed to deep copy map with nil, got %v", v)
+		}
+
+		from["eventId"] = 1
+		if v, ok := to["eventId"]; !ok || v != nil {
+			t.Errorf("failed to deep copy map with nil, got %v", v)
+		}
+
+		copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+		if v, ok := to["eventId"]; !ok || v != 1 {
+			t.Errorf("failed to deep copy map with nil")
+		}
+
+		from["eventId"] = 2
+		if v, ok := to["eventId"]; !ok || v != 1 {
+			t.Errorf("failed to deep copy map with nil")
+		}
+	})
 }
 
 func TestInterface(t *testing.T) {
