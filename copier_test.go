@@ -721,6 +721,24 @@ func TestMapInterface(t *testing.T) {
 			t.Errorf("failed to deep copy map with nil")
 		}
 	})
+
+	t.Run("Test copy map with nested slice map", func(t *testing.T) {
+		var out map[string]interface{}
+		var value = map[string]interface{}{
+			"list": []map[string]interface{}{
+				{
+					"shop_id": 123,
+				},
+			},
+		}
+		err := copier.CopyWithOption(&out, &value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+		if err != nil {
+			t.Fatalf("failed to deep copy nested map")
+		}
+		if fmt.Sprintf("%v", out) != fmt.Sprintf("%v", value) {
+			t.Fatalf("failed to deep copy nested map")
+		}
+	})
 }
 
 func TestInterface(t *testing.T) {

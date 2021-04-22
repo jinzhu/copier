@@ -119,6 +119,10 @@ func TestAssignableType(t *testing.T) {
 	checkType2WithType4(ts.Field3, ts3.Field3, t, "Field3")
 	checkType2WithType4(*ts.Field4, *ts3.Field4, t, "Field4")
 
+	if len(ts3.Field5) != len(ts.Field5) {
+		t.Fatalf("fields not equal, got %v, expects: %v", len(ts3.Field5), len(ts.Field5))
+	}
+
 	for idx, f := range ts.Field5 {
 		checkType2WithType4(*f, *(ts3.Field5[idx]), t, "Field5")
 	}
