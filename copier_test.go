@@ -730,6 +730,11 @@ func TestMapInterface(t *testing.T) {
 					"shop_id": 123,
 				},
 			},
+			"list2": []interface{}{
+				map[string]interface{}{
+					"shop_id": 123,
+				},
+			},
 		}
 		err := copier.CopyWithOption(&out, &value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
 		if err != nil {
