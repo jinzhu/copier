@@ -164,7 +164,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
-	if to.Kind() == reflect.Slice {
+	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
 		isSlice = true
 		if from.Kind() == reflect.Slice {
 			amount = from.Len()
@@ -298,7 +298,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			}
 		}
 
-		if isSlice {
+		if isSlice && to.Kind() == reflect.Slice {
 			if dest.Addr().Type().AssignableTo(to.Type().Elem()) {
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, dest.Addr()))

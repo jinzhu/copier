@@ -15,11 +15,16 @@ type TypeStruct1 struct {
 	Field6 []TypeStruct2
 	Field7 []*TypeStruct2
 	Field8 []TypeStruct2
+	Field9 []string
 }
 
 type TypeStruct2 struct {
 	Field1 int
 	Field2 string
+	Field3 []TypeStruct2
+	Field4 *TypeStruct2
+	Field5 *TypeStruct2
+	Field9 string
 }
 
 type TypeStruct3 struct {
