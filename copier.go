@@ -35,14 +35,14 @@ type Option struct {
 }
 
 // Tag Flags
-type Flags struct {
+type flags struct {
 	BitFlags  map[string]uint8
-	SrcNames  TagNameMapping
-	DestNames TagNameMapping
+	SrcNames  tagNameMapping
+	DestNames tagNameMapping
 }
 
 // Field Tag name mapping
-type TagNameMapping struct {
+type tagNameMapping struct {
 	FieldNameToTag map[string]string
 	TagToFieldName map[string]string
 }
@@ -196,7 +196,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// Get tag options
-		flags, err := getFlags(dest, source, toType, fromType)
+		flgs, err := getFlags(dest, source, toType, fromType)
 		if err != nil {
 			return err
 		}
@@ -209,14 +209,14 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				name := field.Name
 
 				// Get bit flags for field
-				fieldFlags, _ := flags.BitFlags[name]
+				fieldFlags, _ := flgs.BitFlags[name]
 
 				// Check if we should ignore copying
 				if (fieldFlags & tagIgnore) != 0 {
 					continue
 				}
 
-				srcFieldName, destFieldName := getFieldName(name, flags)
+				srcFieldName, destFieldName := getFieldName(name, flgs)
 				if fromField := source.FieldByName(srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
@@ -256,7 +256,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 							}
 							if fieldFlags != 0 {
 								// Note that a copy was made
-								flags.BitFlags[name] = fieldFlags | hasCopied
+								flgs.BitFlags[name] = fieldFlags | hasCopied
 							}
 						}
 					} else {
@@ -278,7 +278,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			// Copy from from method to dest field
 			for _, field := range deepFields(toType) {
 				name := field.Name
-				srcFieldName, destFieldName := getFieldName(name, flags)
+				srcFieldName, destFieldName := getFieldName(name, flgs)
 
 				var fromMethod reflect.Value
 				if source.CanAddr() {
@@ -328,7 +328,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			to.Set(dest)
 		}
 
-		err = checkBitFlags(flags.BitFlags)
+		err = checkBitFlags(flgs.BitFlags)
 	}
 
 	return
@@ -462,16 +462,16 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 }
 
 // parseTags Parses struct tags and returns uint8 bit flags.
-func parseTags(tag string) (flags uint8, name string, err error) {
+func parseTags(tag string) (flg uint8, name string, err error) {
 	for _, t := range strings.Split(tag, ",") {
 		switch t {
 		case "-":
-			flags = tagIgnore
+			flg = tagIgnore
 			return
 		case "must":
-			flags = flags | tagMust
+			flg = flg | tagMust
 		case "nopanic":
-			flags = flags | tagNoPanic
+			flg = flg | tagNoPanic
 		default:
 			if unicode.IsUpper([]rune(t)[0]) {
 				name = strings.TrimSpace(t)
@@ -484,14 +484,14 @@ func parseTags(tag string) (flags uint8, name string, err error) {
 }
 
 // getTagFlags Parses struct tags for bit flags, field name.
-func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (Flags, error) {
-	flags := Flags{
+func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, error) {
+	flgs := flags{
 		BitFlags: map[string]uint8{},
-		SrcNames: TagNameMapping{
+		SrcNames: tagNameMapping{
 			FieldNameToTag: map[string]string{},
 			TagToFieldName: map[string]string{},
 		},
-		DestNames: TagNameMapping{
+		DestNames: tagNameMapping{
 			FieldNameToTag: map[string]string{},
 			TagToFieldName: map[string]string{},
 		},
@@ -510,11 +510,11 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (Flags, er
 		if tags != "" {
 			var name string
 			var err error
-			if flags.BitFlags[field.Name], name, err = parseTags(tags); err != nil {
-				return Flags{}, err
+			if flgs.BitFlags[field.Name], name, err = parseTags(tags); err != nil {
+				return flags{}, err
 			} else if name != "" {
-				flags.DestNames.FieldNameToTag[field.Name] = name
-				flags.DestNames.TagToFieldName[name] = field.Name
+				flgs.DestNames.FieldNameToTag[field.Name] = name
+				flgs.DestNames.TagToFieldName[name] = field.Name
 			}
 		}
 	}
@@ -526,26 +526,26 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (Flags, er
 			var name string
 			var err error
 			if _, name, err = parseTags(tags); err != nil {
-				return Flags{}, err
+				return flags{}, err
 			} else if name != "" {
-				flags.SrcNames.FieldNameToTag[field.Name] = name
-				flags.SrcNames.TagToFieldName[name] = field.Name
+				flgs.SrcNames.FieldNameToTag[field.Name] = name
+				flgs.SrcNames.TagToFieldName[name] = field.Name
 			}
 		}
 	}
-	return flags, nil
+	return flgs, nil
 }
 
 // checkBitFlags Checks flags for error or panic conditions.
 func checkBitFlags(flagsList map[string]uint8) (err error) {
 	// Check flag conditions were met
-	for name, flags := range flagsList {
-		if flags&hasCopied == 0 {
+	for name, flgs := range flagsList {
+		if flgs&hasCopied == 0 {
 			switch {
-			case flags&tagMust != 0 && flags&tagNoPanic != 0:
+			case flgs&tagMust != 0 && flgs&tagNoPanic != 0:
 				err = fmt.Errorf("field %s has must tag but was not copied", name)
 				return
-			case flags&(tagMust) != 0:
+			case flgs&(tagMust) != 0:
 				panic(fmt.Sprintf("Field %s has must tag but was not copied", name))
 			}
 		}
@@ -553,15 +553,15 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 	return
 }
 
-func getFieldName(fieldName string, flags Flags) (srcFieldName string, destFieldName string) {
+func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldName string) {
 	// get dest field name
-	if srcTagName, ok := flags.SrcNames.FieldNameToTag[fieldName]; ok {
+	if srcTagName, ok := flgs.SrcNames.FieldNameToTag[fieldName]; ok {
 		destFieldName = srcTagName
-		if destTagName, ok := flags.DestNames.TagToFieldName[srcTagName]; ok {
+		if destTagName, ok := flgs.DestNames.TagToFieldName[srcTagName]; ok {
 			destFieldName = destTagName
 		}
 	} else {
-		if destTagName, ok := flags.DestNames.TagToFieldName[fieldName]; ok {
+		if destTagName, ok := flgs.DestNames.TagToFieldName[fieldName]; ok {
 			destFieldName = destTagName
 		}
 	}
@@ -570,13 +570,13 @@ func getFieldName(fieldName string, flags Flags) (srcFieldName string, destField
 	}
 
 	// get source field name
-	if destTagName, ok := flags.DestNames.FieldNameToTag[fieldName]; ok {
+	if destTagName, ok := flgs.DestNames.FieldNameToTag[fieldName]; ok {
 		srcFieldName = destTagName
-		if srcField, ok := flags.SrcNames.TagToFieldName[destTagName]; ok {
+		if srcField, ok := flgs.SrcNames.TagToFieldName[destTagName]; ok {
 			srcFieldName = srcField
 		}
 	} else {
-		if srcField, ok := flags.SrcNames.TagToFieldName[fieldName]; ok {
+		if srcField, ok := flgs.SrcNames.TagToFieldName[fieldName]; ok {
 			srcFieldName = srcField
 		}
 	}
