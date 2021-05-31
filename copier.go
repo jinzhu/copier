@@ -116,7 +116,12 @@ func (c copy) copier(toValue interface{}, fromValue interface{}, opt Option) (er
 	}
 
 	if toType.Kind() == reflect.Interface {
-		toType = reflect.TypeOf(to.Interface())
+		toType, _ = indirectType(reflect.TypeOf(to.Interface()))
+		oldTo := to
+		to = reflect.New(reflect.TypeOf(to.Interface())).Elem()
+		defer func() {
+			oldTo.Set(to)
+		}()
 	}
 
 	// Just set it if possible to assign for normal types
@@ -131,7 +136,7 @@ func (c copy) copier(toValue interface{}, fromValue interface{}, opt Option) (er
 		return
 	}
 
-	if fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
+	if from.Kind() != reflect.Slice && fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
 		if !fromType.Key().ConvertibleTo(toType.Key()) {
 			return ErrMapKeyNotMatch
 		}
@@ -171,8 +176,14 @@ func (c copy) copier(toValue interface{}, fromValue interface{}, opt Option) (er
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)
 		}
+
 		for i := 0; i < from.Len(); i++ {
+			if to.Len() < i+1 {
+				to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
+			}
+
 			if !c.set(to.Index(i), from.Index(i), opt.DeepCopy) {
+				// ignore error while copy slice element
 				err = c.CopyWithOption(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
 				if err != nil {
 					continue
@@ -275,11 +286,10 @@ func (c copy) copier(toValue interface{}, fromValue interface{}, opt Option) (er
 								if err := c.copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
 									return err
 								}
-							} else {
-								if fieldFlags != 0 {
-									// Note that a copy was made
-									tagBitFlags[name] = fieldFlags | hasCopied
-								}
+							}
+							if fieldFlags != 0 {
+								// Note that a copy was made
+								tagBitFlags[name] = fieldFlags | hasCopied
 							}
 						}
 					} else {
@@ -322,9 +332,29 @@ func (c copy) copier(toValue interface{}, fromValue interface{}, opt Option) (er
 
 		if isSlice {
 			if dest.Addr().Type().AssignableTo(to.Type().Elem()) {
-				to.Set(reflect.Append(to, dest.Addr()))
+				if to.Len() < i+1 {
+					to.Set(reflect.Append(to, dest.Addr()))
+				} else {
+					if !set(to.Index(i), dest.Addr(), opt.DeepCopy) {
+						// ignore error while copy slice element
+						err = copier(to.Index(i).Addr().Interface(), dest.Addr().Interface(), opt)
+						if err != nil {
+							continue
+						}
+					}
+				}
 			} else if dest.Type().AssignableTo(to.Type().Elem()) {
-				to.Set(reflect.Append(to, dest))
+				if to.Len() < i+1 {
+					to.Set(reflect.Append(to, dest))
+				} else {
+					if !set(to.Index(i), dest, opt.DeepCopy) {
+						// ignore error while copy slice element
+						err = copier(to.Index(i).Addr().Interface(), dest.Interface(), opt)
+						if err != nil {
+							continue
+						}
+					}
+				}
 			}
 		} else if initDest {
 			to.Set(dest)
@@ -416,8 +446,10 @@ func (c copy) set(to, from reflect.Value, deepCopy bool) bool {
 		if deepCopy {
 			toKind := to.Kind()
 			if toKind == reflect.Interface && to.IsNil() {
-				to.Set(reflect.New(reflect.TypeOf(from.Interface())).Elem())
-				toKind = reflect.TypeOf(to.Interface()).Kind()
+				if reflect.TypeOf(from.Interface()) != nil {
+					to.Set(reflect.New(reflect.TypeOf(from.Interface())).Elem())
+					toKind = reflect.TypeOf(to.Interface()).Kind()
+				}
 			}
 			if toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice {
 				return false

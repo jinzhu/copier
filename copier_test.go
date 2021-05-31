@@ -3,6 +3,7 @@ package copier_test
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -240,6 +241,32 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	} else {
 		checkEmployee2(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")
 		checkEmployee2(*((*employees4)[1]), users[1], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 2")
+	}
+}
+
+func TestCopyFromSliceToSlice3(t *testing.T) {
+	type CollectionAlias struct {
+		CollectionName string `json:"collection_name"`
+		Name           string `json:"name"`
+	}
+
+	expectedResult := []*CollectionAlias{
+		{"collection", "collection_alias1"},
+		{"collection", "collection_alias2"},
+		{"collection", "collection_alias3"},
+	}
+
+	mockedResult := []*CollectionAlias{}
+	copier.Copy(&mockedResult, &expectedResult)
+
+	if len(mockedResult) != len(expectedResult) {
+		t.Fatalf("failed to copy results")
+	}
+
+	for idx := range mockedResult {
+		if mockedResult[idx].Name != mockedResult[idx].Name || mockedResult[idx].CollectionName != mockedResult[idx].CollectionName {
+			t.Fatalf("failed to copy results")
+		}
 	}
 }
 
@@ -668,6 +695,53 @@ func TestMapInterface(t *testing.T) {
 
 		if to.GenOptions["key"].(Outer).Inner.IntPtr == from.GenOptions["key"].(Outer).Inner.IntPtr {
 			t.Errorf("should be different")
+		}
+	})
+
+	t.Run("Test copy map with nil interface", func(t *testing.T) {
+		from := map[string]interface{}{"eventId": nil}
+		to := map[string]interface{}{"eventId": nil}
+		copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+		if v, ok := to["eventId"]; !ok || v != nil {
+			t.Errorf("failed to deep copy map with nil, got %v", v)
+		}
+
+		from["eventId"] = 1
+		if v, ok := to["eventId"]; !ok || v != nil {
+			t.Errorf("failed to deep copy map with nil, got %v", v)
+		}
+
+		copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+		if v, ok := to["eventId"]; !ok || v != 1 {
+			t.Errorf("failed to deep copy map with nil")
+		}
+
+		from["eventId"] = 2
+		if v, ok := to["eventId"]; !ok || v != 1 {
+			t.Errorf("failed to deep copy map with nil")
+		}
+	})
+
+	t.Run("Test copy map with nested slice map", func(t *testing.T) {
+		var out map[string]interface{}
+		var value = map[string]interface{}{
+			"list": []map[string]interface{}{
+				{
+					"shop_id": 123,
+				},
+			},
+			"list2": []interface{}{
+				map[string]interface{}{
+					"shop_id": 123,
+				},
+			},
+		}
+		err := copier.CopyWithOption(&out, &value, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+		if err != nil {
+			t.Fatalf("failed to deep copy nested map")
+		}
+		if fmt.Sprintf("%v", out) != fmt.Sprintf("%v", value) {
+			t.Fatalf("failed to deep copy nested map")
 		}
 	})
 }
@@ -1182,5 +1256,34 @@ func TestScanFromPtrToSqlNullable(t *testing.T) {
 
 	if from.T2.Time != *to.T2 {
 		t.Errorf("Fields T2 fields should be equal")
+	}
+}
+
+func TestDeepCopyInterface(t *testing.T) {
+	var m = make(map[string]string)
+	m["a"] = "ccc"
+
+	from := []interface{}{[]int{7, 8, 9}, 2, 3, m, errors.New("aaaa")}
+	var to []interface{}
+
+	copier.CopyWithOption(&to, &from, copier.Option{
+		IgnoreEmpty: false,
+		DeepCopy:    true,
+	})
+
+	from[0].([]int)[0] = 10
+	from[1] = "3"
+	from[3].(map[string]string)["a"] = "bbb"
+
+	if fmt.Sprint(to[0]) != fmt.Sprint([]int{7, 8, 9}) {
+		t.Errorf("to value failed to be deep copied")
+	}
+
+	if fmt.Sprint(to[1]) != "2" {
+		t.Errorf("to value failed to be deep copied")
+	}
+
+	if to[3].(map[string]string)["a"] != "ccc" {
+		t.Errorf("to value failed to be deep copied")
 	}
 }
