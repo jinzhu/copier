@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -249,7 +250,16 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					toField := dest.FieldByName(destFieldName)
 					if toField.IsValid() {
 						if toField.CanSet() {
-							if !set(toField, fromField, opt.DeepCopy) {
+							_, fromTime := fromField.Interface().(time.Time)
+							_, fromTimePtr := fromField.Interface().(*time.Time)
+							_, toTime := toField.Interface().(time.Time)
+							_, toTimePtr := toField.Interface().(*time.Time)
+
+							deepCopy := opt.DeepCopy
+							if fromTime || fromTimePtr || toTime || toTimePtr {
+								deepCopy = false
+							}
+							if !set(toField, fromField, deepCopy) {
 								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
 									return err
 								}
