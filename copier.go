@@ -86,6 +86,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		oldTo := to
 		to = reflect.New(reflect.TypeOf(to.Interface())).Elem()
 		defer func() {
+			// XXX ??? `oldTo` can't be used after end-of-scope anyway...?
 			oldTo.Set(to)
 		}()
 	}
@@ -165,6 +166,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
+		// XXX can this *ever* get hit? Seems to contradict above case
 		isSlice = true
 		if from.Kind() == reflect.Slice {
 			amount = from.Len()
@@ -247,17 +249,15 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					}
 
 					toField := dest.FieldByName(destFieldName)
-					if toField.IsValid() {
-						if toField.CanSet() {
-							if !set(toField, fromField, opt.DeepCopy) {
-								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
-									return err
-								}
+					if toField.IsValid() && toField.CanSet() {
+						if !set(toField, fromField, opt.DeepCopy) {
+							if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
+								return err
 							}
-							if fieldFlags != 0 {
-								// Note that a copy was made
-								flgs.BitFlags[name] = fieldFlags | hasCopied
-							}
+						}
+						if fieldFlags != 0 {
+							// Note that a copy was made
+							flgs.BitFlags[name] = fieldFlags | hasCopied
 						}
 					} else {
 						// try to set to method
@@ -411,7 +411,13 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 					toKind = reflect.TypeOf(to.Interface()).Kind()
 				}
 			}
-			if toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice {
+			switch toKind {
+			case reflect.Struct:
+				// start with a shallow copy
+				set(to, from, false)
+				// ...but deep-copy as much as possible
+				return false
+			case reflect.Map, reflect.Slice:
 				return false
 			}
 		}
