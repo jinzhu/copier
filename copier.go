@@ -86,7 +86,6 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		oldTo := to
 		to = reflect.New(reflect.TypeOf(to.Interface())).Elem()
 		defer func() {
-			// XXX ??? `oldTo` can't be used after end-of-scope anyway...?
 			oldTo.Set(to)
 		}()
 	}
@@ -166,7 +165,6 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
-		// XXX can this *ever* get hit? Seems to contradict above case
 		isSlice = true
 		if from.Kind() == reflect.Slice {
 			amount = from.Len()
