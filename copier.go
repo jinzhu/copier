@@ -203,6 +203,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 		// check source
 		if source.IsValid() {
+			copyUnexportedStructFields(dest, source)
+
 			// Copy from source field to dest field or method
 			fromTypeFields := deepFields(fromType)
 			for _, field := range fromTypeFields {
@@ -332,6 +334,24 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	return
+}
+
+func copyUnexportedStructFields(to, from reflect.Value) {
+	if from.Kind() != reflect.Struct || to.Kind() != reflect.Struct || !from.Type().AssignableTo(to.Type()) {
+		return
+	}
+
+	// create a shallow copy of 'to' to get all fields
+	tmp := indirect(reflect.New(to.Type()))
+	tmp.Set(from)
+
+	// revert exported fields
+	for i := 0; i < to.NumField(); i++ {
+		if tmp.Field(i).CanSet() {
+			tmp.Field(i).Set(to.Field(i))
+		}
+	}
+	to.Set(tmp)
 }
 
 func shouldIgnore(v reflect.Value, ignoreEmpty bool) bool {
