@@ -560,30 +560,14 @@ func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldN
 		if destTagName, ok := flgs.DestNames.TagToFieldName[srcTagName]; ok {
 			destFieldName = destTagName
 		}
+	} else if destTagName, ok := flgs.DestNames.TagToFieldName[fieldName]; ok {
+		destFieldName = destTagName
 	} else {
-		if destTagName, ok := flgs.DestNames.TagToFieldName[fieldName]; ok {
-			destFieldName = destTagName
-		}
-	}
-	if destFieldName == "" {
 		destFieldName = fieldName
 	}
 
 	// get source field name
-	if destTagName, ok := flgs.DestNames.FieldNameToTag[fieldName]; ok {
-		srcFieldName = destTagName
-		if srcField, ok := flgs.SrcNames.TagToFieldName[destTagName]; ok {
-			srcFieldName = srcField
-		}
-	} else {
-		if srcField, ok := flgs.SrcNames.TagToFieldName[fieldName]; ok {
-			srcFieldName = srcField
-		}
-	}
-
-	if srcFieldName == "" {
-		srcFieldName = fieldName
-	}
+	srcFieldName = fieldName
 	return
 }
 
