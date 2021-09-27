@@ -32,6 +32,11 @@ type Option struct {
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
 	IgnoreEmpty bool
 	DeepCopy    bool
+	// Suppert user setting copier tag flag.The default TagFlag is copier,and TagDelimiter is a comma(",").
+	// For example: `copier:"Name,must,nopanic"` is the default format. Now you can write `num:"Name;must;nopanic;"` by setting
+	// Option{TagFlag: "num",TagDelimiter: ";"}
+	TagFlag      string
+	TagDelimiter string
 }
 
 // Tag Flags
@@ -196,7 +201,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType)
+		flgs, err := getFlags(dest, source, toType, fromType, opt)
 		if err != nil {
 			return err
 		}
@@ -462,8 +467,11 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 }
 
 // parseTags Parses struct tags and returns uint8 bit flags.
-func parseTags(tag string) (flg uint8, name string, err error) {
-	for _, t := range strings.Split(tag, ",") {
+func parseTags(tag, separation string) (flg uint8, name string, err error) {
+	if strings.TrimSpace(separation) == "" {
+		separation = ","
+	}
+	for _, t := range strings.Split(tag, strings.TrimSpace(separation)) {
 		switch t {
 		case "-":
 			flg = tagIgnore
@@ -484,7 +492,7 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 }
 
 // getTagFlags Parses struct tags for bit flags, field name.
-func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, error) {
+func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option) (flags, error) {
 	flgs := flags{
 		BitFlags: map[string]uint8{},
 		SrcNames: tagNameMapping{
@@ -506,11 +514,15 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 
 	// Get a list dest of tags
 	for _, field := range toTypeFields {
-		tags := field.Tag.Get("copier")
+		tagFlag := strings.TrimSpace(opt.TagFlag)
+		if tagFlag == "" {
+			tagFlag = "copier"
+		}
+		tags := field.Tag.Get(tagFlag)
 		if tags != "" {
 			var name string
 			var err error
-			if flgs.BitFlags[field.Name], name, err = parseTags(tags); err != nil {
+			if flgs.BitFlags[field.Name], name, err = parseTags(tags, opt.TagDelimiter); err != nil {
 				return flags{}, err
 			} else if name != "" {
 				flgs.DestNames.FieldNameToTag[field.Name] = name
@@ -525,7 +537,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 		if tags != "" {
 			var name string
 			var err error
-			if flgs.BitFlags[field.Name], name, err = parseTags(tags); err != nil {
+			if flgs.BitFlags[field.Name], name, err = parseTags(tags, opt.TagDelimiter); err != nil {
 				return flags{}, err
 			} else if name != "" {
 				flgs.SrcNames.FieldNameToTag[field.Name] = name
