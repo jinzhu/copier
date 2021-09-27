@@ -525,7 +525,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 		if tags != "" {
 			var name string
 			var err error
-			if _, name, err = parseTags(tags); err != nil {
+			if flgs.BitFlags[field.Name], name, err = parseTags(tags); err != nil {
 				return flags{}, err
 			} else if name != "" {
 				flgs.SrcNames.FieldNameToTag[field.Name] = name
