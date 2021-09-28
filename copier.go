@@ -32,7 +32,7 @@ type Option struct {
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
 	IgnoreEmpty bool
 	DeepCopy    bool
-	// Suppert user setting copier tag flag.The default TagFlag is copier,and TagDelimiter is a comma(",").
+	// Support user setting copier tag flag.The default TagFlag is copier,and TagDelimiter is a comma(",").
 	// For example: `copier:"Name,must,nopanic"` is the default format. Now you can write `num:"Name;must;nopanic;"` by setting
 	// Option{TagFlag: "num",TagDelimiter: ";"}
 	TagFlag      string
@@ -262,6 +262,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 							if fieldFlags != 0 {
 								// Note that a copy was made
 								flgs.BitFlags[name] = fieldFlags | hasCopied
+								flgs.BitFlags[destFieldName] = fieldFlags | hasCopied
 							}
 						}
 					} else {
