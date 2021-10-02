@@ -534,7 +534,11 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 
 	// Get a list source of tags
 	for _, field := range fromTypeFields {
-		tags := field.Tag.Get("copier")
+		tagFlag := strings.TrimSpace(opt.TagFlag)
+		if tagFlag == "" {
+			tagFlag = "copier"
+		}
+		tags := field.Tag.Get(tagFlag)
 		if tags != "" {
 			var name string
 			var err error
