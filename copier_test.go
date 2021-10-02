@@ -1287,3 +1287,27 @@ func TestDeepCopyInterface(t *testing.T) {
 		t.Errorf("to value failed to be deep copied")
 	}
 }
+func TestTagFlag(t *testing.T) {
+	type model1 struct {
+		ID   int    `copier:"must"`
+		Name string `copy:"NName;must"`
+		A    int    `copy:"C;must;nopanic"`
+	}
+	type model2 struct {
+		NName string
+		B     int `copy:"C"`
+	}
+	m1 := model1{
+		ID:   1,
+		A:    12,
+		Name: "123",
+	}
+	var m2 model2
+	copier.CopyWithOption(&m2, &m1, copier.Option{TagFlag: "copy", TagDelimiter: ";"})
+	if m2.NName != m1.Name {
+		t.Errorf("error by tagFlag copy")
+	}
+	if m2.B != m1.A {
+		t.Error("error by tagFlag copy")
+	}
+}
