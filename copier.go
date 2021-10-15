@@ -243,7 +243,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					}
 
 					if destFieldNotSet {
-						break
+						continue
 					}
 
 					toField := dest.FieldByName(destFieldName)

@@ -1287,3 +1287,24 @@ func TestDeepCopyInterface(t *testing.T) {
 		t.Errorf("to value failed to be deep copied")
 	}
 }
+
+func TestDontBreakCopyOnEmptyPointer(t *testing.T) {
+	type Cat struct {
+		id   *string
+		Age  int
+		Name string
+	}
+
+	cat1 := Cat{Age: 7, Name: "Wilson"}
+	cat2 := Cat{}
+
+	copier.Copy(&cat2, &cat1)
+
+	if cat2.Age != cat1.Age {
+		t.Errorf("Field Age should be copied")
+	}
+
+	if cat2.Name != cat1.Name {
+		t.Errorf("Field Name should be copied")
+	}
+}
