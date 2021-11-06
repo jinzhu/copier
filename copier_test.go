@@ -328,10 +328,14 @@ func TestStructField(t *testing.T) {
 	type UserWithDetailsPtr struct {
 		Details []*Detail
 		Detail  *Detail
+		Notes   *[]string
+		Notes2  *[]string
 	}
 	type UserWithDetails struct {
 		Details []Detail
 		Detail  Detail
+		Notes   []string
+		Notes2  []string
 	}
 	type UserWithSimilarDetailsPtr struct {
 		Detail *SimilarDetail
@@ -383,7 +387,7 @@ func TestStructField(t *testing.T) {
 				t.Fatalf("DeepCopy not enabled")
 			}
 
-			if len(to.Details) != len(to.Details) {
+			if len(from.Details) != len(to.Details) {
 				t.Fatalf("slice should be copied")
 			}
 
@@ -408,7 +412,7 @@ func TestStructField(t *testing.T) {
 				t.Fatalf("DeepCopy not enabled")
 			}
 
-			if len(to.Details) != len(to.Details) {
+			if len(from.Details) != len(to.Details) {
 				t.Fatalf("slice should be copied")
 			}
 
@@ -496,6 +500,27 @@ func TestStructField(t *testing.T) {
 				t.Errorf("should be different")
 			}
 		})
+
+		t.Run("Should work with from a nil ptr slice field to a slice field", func(t *testing.T) {
+			notes := []string{"hello", "world"}
+			from := UserWithDetailsPtr{Notes: &notes, Notes2: nil}
+			to := UserWithDetails{}
+			err := copier.Copy(&to, from)
+			if err != nil {
+				t.Errorf("should not return an error")
+				return
+			}
+
+			if len(to.Notes) != len(*from.Notes) {
+				t.Errorf("should be the same length")
+			}
+			if to.Notes[0] != (*from.Notes)[0] {
+				t.Errorf("should be the same")
+			}
+			if to.Notes[1] != (*from.Notes)[1] {
+				t.Errorf("should be the same")
+			}
+		})
 	})
 
 	t.Run("Should work with deepCopy", func(t *testing.T) {
@@ -515,7 +540,7 @@ func TestStructField(t *testing.T) {
 				t.Fatalf("DeepCopy enabled")
 			}
 
-			if len(to.Details) != len(to.Details) {
+			if len(from.Details) != len(to.Details) {
 				t.Fatalf("slice should be copied")
 			}
 
@@ -539,7 +564,7 @@ func TestStructField(t *testing.T) {
 				t.Fatalf("DeepCopy enabled")
 			}
 
-			if len(to.Details) != len(to.Details) {
+			if len(from.Details) != len(to.Details) {
 				t.Fatalf("slice should be copied")
 			}
 
@@ -624,6 +649,37 @@ func TestStructField(t *testing.T) {
 				t.Errorf("should be the same")
 			}
 			if to.Detail.Info2 == from.Detail.Info2 {
+				t.Errorf("should be different")
+			}
+		})
+
+		t.Run("Should work with from a nil ptr slice field to a slice field", func(t *testing.T) {
+			notes := []string{"hello", "world"}
+			from := UserWithDetailsPtr{Notes: &notes, Notes2: nil}
+			to := UserWithDetails{}
+			err := copier.CopyWithOption(&to, from, optionsDeepCopy)
+			if err != nil {
+				t.Errorf("should not return an error")
+				return
+			}
+
+			if len(to.Notes) != len(*from.Notes) {
+				t.Errorf("should be the same length")
+			}
+			if to.Notes[0] != (*from.Notes)[0] {
+				t.Errorf("should be the same")
+			}
+			if to.Notes[1] != (*from.Notes)[1] {
+				t.Errorf("should be the same")
+			}
+
+			newValue := []string{"new", "value"}
+			to.Notes = newValue
+
+			if to.Notes[0] == (*from.Notes)[0] {
+				t.Errorf("should be different")
+			}
+			if to.Notes[1] == (*from.Notes)[1] {
 				t.Errorf("should be different")
 			}
 		})

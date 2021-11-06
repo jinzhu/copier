@@ -411,6 +411,9 @@ func set(to, from reflect.Value, deepCopy bool) bool {
 					toKind = reflect.TypeOf(to.Interface()).Kind()
 				}
 			}
+			if from.Kind() == reflect.Ptr && from.IsNil() {
+				return true
+			}
 			if toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice {
 				return false
 			}
