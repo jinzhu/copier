@@ -26,6 +26,7 @@ func (user User) DoubleAge() int32 {
 }
 
 type Employee struct {
+	_User     *User
 	Name      string
 	Birthday  *time.Time
 	Nickname  *string
@@ -134,6 +135,10 @@ func TestCopyStruct(t *testing.T) {
 	employee4 := &Employee{}
 	copier.Copy(&employee4, user)
 	checkEmployee(*employee4, user, t, "Copy From Ptr To Double Ptr")
+
+	employee5 := &Employee{}
+	copier.Copy(&employee5, &employee)
+	checkEmployee(*employee5, user, t, "Copy From Employee To Employee")
 }
 
 func TestCopyFromStructToSlice(t *testing.T) {
