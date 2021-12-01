@@ -348,7 +348,10 @@ func deepFields(reflectType reflect.Type) []reflect.StructField {
 
 		for i := 0; i < reflectType.NumField(); i++ {
 			v := reflectType.Field(i)
-			if v.IsExported() {
+			// PkgPath is the package path that qualifies a lower case (unexported)
+			// field name. It is empty for upper case (exported) field names.
+			// See https://golang.org/ref/spec#Uniqueness_of_identifiers
+			if v.PkgPath == "" {
 				if v.Anonymous {
 					fields = append(fields, deepFields(v.Type)...)
 				} else {
