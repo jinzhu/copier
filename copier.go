@@ -515,7 +515,12 @@ func lookupAndCopyWithConverter(to, from reflect.Value, converters map[converter
 			return false, err
 		}
 
-		to.Set(reflect.ValueOf(result))
+		if result != nil {
+			to.Set(reflect.ValueOf(result))
+		} else {
+			// in case we've got a nil value to copy
+			to.Set(reflect.Zero(to.Type()))
+		}
 
 		return true, nil
 	}

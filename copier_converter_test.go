@@ -137,3 +137,51 @@ func TestCopyWithConverterAndAnnotation(t *testing.T) {
 		t.Fatalf("got %q, wanted %q", dst.Field2, "test2")
 	}
 }
+
+func TestCopyWithConverterStrToStrPointer(t *testing.T) {
+	type SrcStruct struct {
+		Field1 string
+	}
+
+	type DestStruct struct {
+		Field1 *string
+	}
+
+	src := SrcStruct{
+		Field1: "",
+	}
+
+	var dst DestStruct
+
+	ptrStrType := ""
+
+	err := copier.CopyWithOption(&dst, &src, copier.Option{
+		IgnoreEmpty: true,
+		DeepCopy:    true,
+		Converters: []copier.TypeConverter{
+			{
+				SrcType: copier.String,
+				DstType: &ptrStrType,
+				Fn: func(src interface{}) (interface{}, error) {
+					s, _ := src.(string)
+
+					// return nil on empty string
+					if s == "" {
+						return nil, nil
+					}
+
+					return &s, nil
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		t.Fatalf(`Should be able to copy from src to dst object. %v`, err)
+		return
+	}
+
+	if dst.Field1 != nil {
+		t.Fatalf("got %q, wanted nil", *dst.Field1)
+	}
+}
