@@ -372,10 +372,10 @@ func deepFields(reflectType reflect.Type) []reflect.StructField {
 			// field name. It is empty for upper case (exported) field names.
 			// See https://golang.org/ref/spec#Uniqueness_of_identifiers
 			if v.PkgPath == "" {
+				fields = append(fields, v)
 				if v.Anonymous {
+					// also consider fields of anonymous fields as fields of the root
 					fields = append(fields, deepFields(v.Type)...)
-				} else {
-					fields = append(fields, v)
 				}
 			}
 		}

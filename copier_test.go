@@ -1453,3 +1453,20 @@ func TestDeepCopySimpleTime(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to, from)
 	}
 }
+
+type TimeWrapper struct{
+	time.Time
+}
+
+func TestDeepCopyAnonymousFieldTime(t *testing.T) {
+	from := TimeWrapper{time.Now()}
+	to := TimeWrapper{}
+
+	err := copier.CopyWithOption(&to, from, copier.Option{DeepCopy: true})
+	if err != nil {
+		t.Error("should not error")
+	}
+	if !from.Time.Equal(to.Time) {
+		t.Errorf("to (%v) value should equal from (%v) value", to.Time, from.Time)
+	}
+}
