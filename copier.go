@@ -203,6 +203,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 		// check source
 		if source.IsValid() {
+			copyUnexportedStructFields(dest, source)
+
 			// Copy from source field to dest field or method
 			fromTypeFields := deepFields(fromType)
 			for _, field := range fromTypeFields {
@@ -334,6 +336,24 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	return
 }
 
+func copyUnexportedStructFields(to, from reflect.Value) {
+	if from.Kind() != reflect.Struct || to.Kind() != reflect.Struct || !from.Type().AssignableTo(to.Type()) {
+		return
+	}
+
+	// create a shallow copy of 'to' to get all fields
+	tmp := indirect(reflect.New(to.Type()))
+	tmp.Set(from)
+
+	// revert exported fields
+	for i := 0; i < to.NumField(); i++ {
+		if tmp.Field(i).CanSet() {
+			tmp.Field(i).Set(to.Field(i))
+		}
+	}
+	to.Set(tmp)
+}
+
 func shouldIgnore(v reflect.Value, ignoreEmpty bool) bool {
 	if !ignoreEmpty {
 		return false
@@ -352,10 +372,10 @@ func deepFields(reflectType reflect.Type) []reflect.StructField {
 			// field name. It is empty for upper case (exported) field names.
 			// See https://golang.org/ref/spec#Uniqueness_of_identifiers
 			if v.PkgPath == "" {
+				fields = append(fields, v)
 				if v.Anonymous {
+					// also consider fields of anonymous fields as fields of the root
 					fields = append(fields, deepFields(v.Type)...)
-				} else {
-					fields = append(fields, v)
 				}
 			}
 		}
