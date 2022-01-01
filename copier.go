@@ -3,11 +3,9 @@ package copier
 import (
 	"database/sql"
 	"database/sql/driver"
-	"errors"
 	"fmt"
 	"reflect"
 	"strings"
-	"unicode"
 )
 
 // These flags define options for tag handling
@@ -502,11 +500,12 @@ func parseTags(tag, separation string) (flg uint8, name string, err error) {
 		case "nopanic":
 			flg = flg | tagNoPanic
 		default:
-			if unicode.IsUpper([]rune(t)[0]) {
-				name = strings.TrimSpace(t)
-			} else {
-				err = errors.New("copier field name tag must be start upper case")
-			}
+			name = strings.TrimSpace(t)
+			// if unicode.IsUpper([]rune(t)[0]) {
+			// 	name = strings.TrimSpace(t)
+			// } else {
+			// 	err = errors.New("copier field name tag must be start upper case")
+			// }
 		}
 	}
 	return

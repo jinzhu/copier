@@ -1,20 +1,18 @@
 # Copier
 
-  I am a copier, I copy everything from one to another
-
-[![test status](https://github.com/jinzhu/copier/workflows/tests/badge.svg?branch=master "test status")](https://github.com/jinzhu/copier/actions)
+I am a copier, I copy everything from one to another
 
 ## Features
 
-* Copy from field to field with same name
-* Copy from method to field with same name
-* Copy from field to method with same name
-* Copy from slice to slice
-* Copy from struct to slice
-* Copy from map to map
-* Enforce copying a field with a tag
-* Ignore a field with a tag
-* Deep Copy
+- Copy from field to field with same name
+- Copy from method to field with same name
+- Copy from field to method with same name
+- Copy from slice to slice
+- Copy from struct to slice
+- Copy from map to map
+- Enforce copying a field with a tag
+- Ignore a field with a tag
+- Deep Copy
 
 ## Usage
 
@@ -23,7 +21,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/jinzhu/copier"
+	"github.com/i-curve/copier"
 )
 
 type User struct {
@@ -63,8 +61,8 @@ func (employee *Employee) Role(role string) {
 
 func main() {
 	var (
-		user      = User{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 200000}
-		users     = []User{{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 100000}, {Name: "jinzhu 2", Age: 30, Role: "Dev", Salary: 60000}}
+		user      = User{Name: "i-curve", Age: 18, Role: "Admin", Salary: 200000}
+		users     = []User{{Name: "i-curve", Age: 18, Role: "Admin", Salary: 100000}, {Name: "i-curve 2", Age: 30, Role: "Dev", Salary: 60000}}
 		employee  = Employee{Salary: 150000}
 		employees = []Employee{}
 	)
@@ -73,7 +71,7 @@ func main() {
 
 	fmt.Printf("%#v \n", employee)
 	// Employee{
-	//    Name: "Jinzhu",           // Copy from field
+	//    Name: "i-curve",           // Copy from field
 	//    Age: 18,                  // Copy from field
 	//    Salary:150000,            // Copying explicitly ignored
 	//    DoubleAge: 36,            // Copy from method
@@ -86,7 +84,7 @@ func main() {
 
 	fmt.Printf("%#v \n", employees)
 	// []Employee{
-	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeId: 0, SuperRole: "Super Admin"}
+	//   {Name: "i-curve", Age: 18, Salary:0, DoubleAge: 36, EmployeId: 0, SuperRole: "Super Admin"}
 	// }
 
 	// Copy slice to slice
@@ -95,8 +93,8 @@ func main() {
 
 	fmt.Printf("%#v \n", employees)
 	// []Employee{
-	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeId: 0, SuperRole: "Super Admin"},
-	//   {Name: "jinzhu 2", Age: 30, Salary:0, DoubleAge: 60, EmployeId: 0, SuperRole: "Super Dev"},
+	//   {Name: "i-curve", Age: 18, Salary:0, DoubleAge: 36, EmployeId: 0, SuperRole: "Super Admin"},
+	//   {Name: "i-curve 2", Age: 30, Salary:0, DoubleAge: 60, EmployeId: 0, SuperRole: "Super Dev"},
 	// }
 
  	// Copy map to map
@@ -121,12 +119,12 @@ You can help to make the project better, check out [http://gorm.io/contribute.ht
 
 # Author
 
-**jinzhu**
+**i-curve**
 
-* <http://github.com/jinzhu>
-* <wosmvp@gmail.com>
-* <http://twitter.com/zhangjinzhu>
+- <http://github.com/i-curve>
+- <wosmvp@gmail.com>
+- <http://twitter.com/zhangi-curve>
 
 ## License
 
-Released under the [MIT License](https://github.com/jinzhu/copier/blob/master/License).
+Released under the [MIT License](https://github.com/i-curve/copier/blob/master/License).
