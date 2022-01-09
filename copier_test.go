@@ -1200,6 +1200,107 @@ func TestCopyMapOfInt(t *testing.T) {
 	}
 }
 
+func TestCopyMapOfSliceValue(t *testing.T) {
+	// case1: map's value is a simple slice
+	key, value := 2, 3
+	src := map[int][]int{key: []int{value} }
+	dst1 := map[int][]int{}
+	var dst2 map[int][]int
+	err := copier.Copy(&dst1, src)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+	err = copier.Copy(&dst2, src)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	for k, v1 := range src {
+		v2, ok := dst1[k]
+		if !ok || len(v1) != len(v2) || k != key {
+			t.Errorf("Map should be copied")
+		}
+		for i, _ := range v1 {
+			if v2[i] != value {
+				t.Errorf("Map's slice value shoud be copied")
+			}
+		}
+
+		v3, ok := dst2[k]
+		if !ok || len(v1) != len(v3) {
+			t.Errorf("Map should be copied")
+		}
+		for i := range v1 {
+			if v3[i] != value {
+				t.Errorf("Map's slice value shoud be copied")
+			}
+		}
+	}
+
+	// case2: map's value is a slice whose element is map
+	key1, key2 := 2, 3
+	value = 4
+	s := map[int][]map[int]int{key1: []map[int]int{ {key2: value} } }
+	d1 := map[int][]map[int]int{key1: []map[int]int{ {key1: key2 } } }
+	d2 := map[int][]map[int]int{key1: []map[int]int{ } }
+	d3 := map[int][]map[int]int{key1:  nil }
+	d4 := map[int][]map[int]int{}
+	d5 := map[int][]map[int]int(nil)
+	ms := []map[int][]map[int]int{d1, d2, d3, d4, d5}
+	for i := range ms {
+		copier.CopyWithOption(&ms[i], s, copier.Option{IgnoreEmpty: false, DeepCopy: true})
+
+		if len(ms[i]) != len(s) {
+			t.Errorf("Number of map's keys should be equal")
+		}
+		for k, sliceMap := range ms[i] {
+			if k != key1 {
+				t.Errorf("Map's key should be copied")
+			}
+			if len(sliceMap) != len(s[key1]) || len(sliceMap) != 1 {
+				t.Errorf("Map's slice value should be copied")
+			}
+			m := sliceMap[0]
+			if len(m) != len(s[key1][0]) || len(m) != 1 {
+				t.Errorf("Map's slice value should be copied recursively")
+			}
+			for k, v := range m {
+				if k != key2 || v != value {
+					t.Errorf("Map's slice value should be copied recursively")
+				} 
+			}
+		}
+	}
+}
+
+func TestCopyMapOfPtrValue(t *testing.T) {
+	intV := 3
+	intv := intV
+	src := map[int]*int{2: &intv }
+	dst1 := map[int]*int{}
+	var dst2 map[int]*int
+	err := copier.Copy(&dst1, src)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+	err = copier.Copy(&dst2, src)
+	if err != nil {
+		t.Error("Should not raise error")
+	}
+
+	for k, v1 := range src {
+		v2, ok := dst1[k]
+		if !ok || v2 == nil || v1 == nil || *v2 != *v1 || *v2 != intV {
+			t.Errorf("Map should be copied")
+		}
+
+		v3, ok := dst2[k]
+		if !ok || v3 == nil ||*v3 != *v1 || *v3 != intV {
+			t.Errorf("Map should be copied")
+		}
+	}
+}
+
 func TestCopyWithOption(t *testing.T) {
 	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
 	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
