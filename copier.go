@@ -151,7 +151,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				return fmt.Errorf("%w map, old key: %v, new key: %v", ErrNotSupported, k.Type(), toType.Key())
 			}
 
-			elemType, _ := indirectType(toType.Elem())
+			elemType := toType.Elem()
+			if elemType.Kind() != reflect.Slice {
+				elemType, _ = indirectType(elemType)
+			}
 			toValue := indirect(reflect.New(elemType))
 			if !set(toValue, from.MapIndex(k), opt.DeepCopy, converters) {
 				if err = copier(toValue.Addr().Interface(), from.MapIndex(k).Interface(), opt); err != nil {
