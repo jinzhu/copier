@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+import "google/protobuf/wrappers.proto";
+
+option go_package = "juzi-cloud.com/im-data-service/pkg/api/material-group/v1";
+
+package materialGroup;
+
+message SaveMaterialGroupRequest {
+  google.protobuf.StringValue id = 1;
+  string orgId = 2;
+  google.protobuf.StringValue userId = 3; // optional 如果没有，则表示是企业话术组
+  string name = 4;
+  google.protobuf.StringValue type = 5;
+  google.protobuf.StringValue scope = 6;
+  int64 order = 7;
+}
+
+message MaterialGroupModel {
+  string id = 1;
+  string name = 2;
+  string type = 3;
+  int64  order = 4;
+}
+
+message MaterialGroupModelList {
+  repeated MaterialGroupModel data = 1;
+}
+
+service MaterialGroup {
+  rpc Save(SaveMaterialGroupRequest) returns(MaterialGroupModel);
+}

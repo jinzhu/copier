@@ -10,7 +10,7 @@ import (
 	"unicode"
 )
 
-// These flags define options for tag handling
+// 定义标签处理选项
 const (
 	// Denotes that a destination field must be copied to. If copying fails then a panic will ensue.
 	tagMust uint8 = 1 << iota
@@ -25,7 +25,7 @@ const (
 	// Denotes that the value as been copied
 	hasCopied
 
-	// Some default converter types for a nicer syntax
+	// String Some default converter types for a nicer syntax
 	String  string  = ""
 	Bool    bool    = false
 	Int     int     = 0
@@ -33,10 +33,11 @@ const (
 	Float64 float64 = 0
 )
 
-// Option sets copy options
+// Option copy 标签
 type Option struct {
 	// setting this value to true will ignore copying zero values of all the fields, including bools, as well as a
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
+	// 如果这些字段设为true,则会忽略copy这些字段的零值,包括bool, 也包括结构体中的字段的零值
 	IgnoreEmpty bool
 	DeepCopy    bool
 	Converters  []TypeConverter
@@ -66,7 +67,7 @@ type tagNameMapping struct {
 	TagToFieldName map[string]string
 }
 
-// Copy copy things
+// Copy things
 func Copy(toValue interface{}, fromValue interface{}) (err error) {
 	return copier(toValue, fromValue, Option{})
 }
@@ -85,7 +86,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		converters map[converterPair]TypeConverter
 	)
 
-	// save convertes into map for faster lookup
+	// save converts into map for faster lookup
 	for i := range opt.Converters {
 		if converters == nil {
 			converters = make(map[converterPair]TypeConverter)
@@ -99,16 +100,20 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		converters[pair] = opt.Converters[i]
 	}
 
+	// 判断是否可以寻址
+	// 如果一个值是切片或可寻址数组的元素、可寻址结构体的字段、或从指针解引用得到的，该值即为可寻址的
 	if !to.CanAddr() {
 		return ErrInvalidCopyDestination
 	}
 
-	// Return is from value is invalid
+	// 如果源值无效可以直接返回
 	if !from.IsValid() {
 		return ErrInvalidCopyFrom
 	}
 
+	// 判断源结构的类型和是否为指针
 	fromType, isPtrFrom := indirectType(from.Type())
+	// 目标结构不判断是否为指针
 	toType, _ := indirectType(to.Type())
 
 	if fromType.Kind() == reflect.Interface {
@@ -125,6 +130,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	// Just set it if possible to assign for normal types
+	// 如果可以直接赋值或者可以进行类型转换
 	if from.Kind() != reflect.Slice && from.Kind() != reflect.Struct && from.Kind() != reflect.Map && (from.Type().AssignableTo(to.Type()) || from.Type().ConvertibleTo(to.Type())) {
 		if !isPtrFrom || !opt.DeepCopy {
 			to.Set(from.Convert(to.Type()))
@@ -136,7 +142,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// 两个转换的类型都是map
 	if from.Kind() != reflect.Slice && fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
+		// 如果不能转换
 		if !fromType.Key().ConvertibleTo(toType.Key()) {
 			return ErrMapKeyNotMatch
 		}
@@ -174,6 +182,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// 如果from和to都为切片,且可以互相转换
 	if from.Kind() == reflect.Slice && to.Kind() == reflect.Slice && fromType.ConvertibleTo(toType) {
 		if to.IsNil() {
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
@@ -196,11 +205,13 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// 如果既不是map也不是slice, 那么需要至少有一个是结构体,如果两个都不是,则直接返回, 无法进行转换
 	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
 		// skip not supported type
 		return
 	}
 
+	// 如果有一个是切片,转换为切片
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
 		isSlice = true
 		if from.Kind() == reflect.Slice {
@@ -314,7 +325,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				}
 			}
 
-			// Copy from from method to dest field
+			// Copy from method to dest field
 			for _, field := range deepFields(toType) {
 				name := field.Name
 				srcFieldName, destFieldName := getFieldName(name, flgs)
@@ -430,9 +441,11 @@ func indirect(reflectValue reflect.Value) reflect.Value {
 	return reflectValue
 }
 
+// 间接类型以及判断是否为指针
 func indirectType(reflectType reflect.Type) (_ reflect.Type, isPtr bool) {
 	for reflectType.Kind() == reflect.Ptr || reflectType.Kind() == reflect.Slice {
 		reflectType = reflectType.Elem()
+		fmt.Printf("list --> %v\n", reflectType)
 		isPtr = true
 	}
 	return reflectType, isPtr
