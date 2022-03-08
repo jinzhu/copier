@@ -49,6 +49,30 @@ func TestCopyTagMust(t *testing.T) {
 	copier.Copy(employee, user)
 }
 
+func TestCopyTagMustNoPanic(t *testing.T) {
+	type Student struct {
+		Name string
+	}
+	type Person struct {
+		Name  string
+		Grade string `copier:"must,nopanic"`
+	}
+
+	student := &Student{
+		Name: "jing1",
+	}
+	person := &Person{}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Error("Expected no panic.")
+		}
+	}()
+	err := copier.Copy(person, student)
+	if err == nil {
+		t.Errorf("Expected err for not copy, got nil")
+	}
+}
+
 func TestCopyTagFieldName(t *testing.T) {
 	t.Run("another name field copy", func(t *testing.T) {
 		type SrcTags struct {
