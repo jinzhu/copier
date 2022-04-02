@@ -516,7 +516,7 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 			return true
 		}
 		rv := reflect.ValueOf(v)
-		if strings.HasPrefix(rv.Type().String(), "int") && strings.HasPrefix(to.Type().String(), "int") {
+		if strings.HasPrefix(rv.Type().String(), "int") && (strings.HasPrefix(to.Type().String(), "int") || strings.HasPrefix(to.Type().String(), "uint")) {
 			convert := rv.Convert(to.Type())
 			to.Set(convert)
 		} else if rv.Type().AssignableTo(to.Type()) {
