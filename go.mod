@@ -1,3 +1,3 @@
-module github.com/jinzhu/copier
+module github.com/i-curve/copier
 
 go 1.15
