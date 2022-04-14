@@ -1,3 +1,3 @@
 module github.com/i-curve/copier
 
-go 1.15
+go 1.17

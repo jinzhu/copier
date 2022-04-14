@@ -84,23 +84,4 @@ func TestCopyTagFieldName(t *testing.T) {
 			t.Error("Field3 no copy")
 		}
 	})
-
-	t.Run("validate error flag name", func(t *testing.T) {
-		type SrcTags struct {
-			field string
-		}
-
-		type DestTags struct {
-			Field1 string `copier:"field"`
-		}
-
-		dst := &DestTags{}
-		src := &SrcTags{
-			field: "field->Field1",
-		}
-		err := copier.Copy(dst, src)
-		if err == nil {
-			t.Fatal("must validate error")
-		}
-	})
 }
