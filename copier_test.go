@@ -146,32 +146,32 @@ func TestCopyFromStructToSlice(t *testing.T) {
 	user := User{Name: "i-curve", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
 	employees := []Employee{}
 
-	if err := copier.Copy(employees, &user); err != nil && len(employees) != 0 {
+	if err := copier.CopyWithOption(employees, &user, copier.Option{IgnoreEmpty: false}); err != nil && len(employees) != 0 {
 		t.Errorf("Copy to unaddressable value should get error")
 	}
 
-	if copier.Copy(&employees, &user); len(employees) != 1 {
+	if copier.CopyWithOption(&employees, &user, copier.Option{IgnoreEmpty: false}); len(employees) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
 		checkEmployee(employees[0], user, t, "Copy From Struct To Slice Ptr")
 	}
 
 	employees2 := &[]Employee{}
-	if copier.Copy(&employees2, user); len(*employees2) != 1 {
+	if copier.CopyWithOption(&employees2, user, copier.Option{}); len(*employees2) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
 		checkEmployee((*employees2)[0], user, t, "Copy From Struct To Double Slice Ptr")
 	}
 
 	employees3 := []*Employee{}
-	if copier.Copy(&employees3, user); len(employees3) != 1 {
+	if copier.CopyWithOption(&employees3, user, copier.Option{IgnoreEmpty: false}); len(employees3) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
 		checkEmployee(*(employees3[0]), user, t, "Copy From Struct To Ptr Slice Ptr")
 	}
 
 	employees4 := &[]*Employee{}
-	if copier.Copy(&employees4, user); len(*employees4) != 1 {
+	if copier.CopyWithOption(&employees4, user, copier.Option{IgnoreEmpty: false}); len(*employees4) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
 		checkEmployee(*((*employees4)[0]), user, t, "Copy From Struct To Double Ptr Slice Ptr")
@@ -182,7 +182,7 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 	users := []User{{Name: "i-curve", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, {Name: "i-curve2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
 	employees := []Employee{}
 
-	if copier.Copy(&employees, users); len(employees) != 2 {
+	if copier.CopyWithOption(&employees, users, copier.Option{}); len(employees) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee(employees[0], users[0], t, "Copy From Slice To Slice Ptr @ 1")
@@ -190,7 +190,7 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 	}
 
 	employees2 := &[]Employee{}
-	if copier.Copy(&employees2, &users); len(*employees2) != 2 {
+	if copier.CopyWithOption(&employees2, &users, copier.Option{}); len(*employees2) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee((*employees2)[0], users[0], t, "Copy From Slice Ptr To Double Slice Ptr @ 1")
@@ -198,7 +198,7 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 	}
 
 	employees3 := []*Employee{}
-	if copier.Copy(&employees3, users); len(employees3) != 2 {
+	if copier.CopyWithOption(&employees3, users, copier.Option{}); len(employees3) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee(*(employees3[0]), users[0], t, "Copy From Slice To Ptr Slice Ptr @ 1")
@@ -206,7 +206,7 @@ func TestCopyFromSliceToSlice(t *testing.T) {
 	}
 
 	employees4 := &[]*Employee{}
-	if copier.Copy(&employees4, users); len(*employees4) != 2 {
+	if copier.CopyWithOption(&employees4, users, copier.Option{}); len(*employees4) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")
@@ -218,7 +218,7 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	users := []*User{{Name: "i-curve", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, nil}
 	employees := []Employee{}
 
-	if copier.Copy(&employees, users); len(employees) != 2 {
+	if copier.CopyWithOption(&employees, users, copier.Option{}); len(employees) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2(employees[0], users[0], t, "Copy From Slice To Slice Ptr @ 1")
@@ -226,7 +226,7 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 
 	employees2 := &[]Employee{}
-	if copier.Copy(&employees2, &users); len(*employees2) != 2 {
+	if copier.CopyWithOption(&employees2, &users, copier.Option{}); len(*employees2) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2((*employees2)[0], users[0], t, "Copy From Slice Ptr To Double Slice Ptr @ 1")
@@ -234,7 +234,7 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 
 	employees3 := []*Employee{}
-	if copier.Copy(&employees3, users); len(employees3) != 2 {
+	if copier.CopyWithOption(&employees3, users, copier.Option{}); len(employees3) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2(*(employees3[0]), users[0], t, "Copy From Slice To Ptr Slice Ptr @ 1")
@@ -242,7 +242,7 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 
 	employees4 := &[]*Employee{}
-	if copier.Copy(&employees4, users); len(*employees4) != 2 {
+	if copier.CopyWithOption(&employees4, users, copier.Option{}); len(*employees4) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")

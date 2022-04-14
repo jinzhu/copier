@@ -184,7 +184,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		if from.IsNil() && !opt.IgnoreEmpty {
-			to.Set(from)
+			to.Set(reflect.Zero(to.Type()))
 			return
 		}
 
