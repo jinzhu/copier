@@ -14,6 +14,7 @@ I am a copier, I copy everything from one to another
 - Ignore a field with a tag
 - Deep Copy
 - Support struct to map
+- Support int64 timestamp and go time each copy
 
 ## Usage
 

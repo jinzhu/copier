@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
 
 // These flags define options for tag handling
@@ -41,6 +42,7 @@ type Option struct {
 	UpperCase   bool
 	IgnoreField []string
 	// LowerCase bool
+	TimeFormat string // time and int64 copier :unix, unixmill
 	// Support user setting copier tag flag.The default TagFlag is copier,and TagDelimiter is a comma(",").
 	// For example: `copier:"Name,must,nopanic"` is the default format. Now you can write `num:"Name;must;nopanic;"` by setting
 	// Option{TagFlag: "num",TagDelimiter: ";"}
@@ -62,9 +64,10 @@ type converterPair struct {
 
 // Tag Flags
 type flags struct {
-	BitFlags  map[string]uint8
-	SrcNames  tagNameMapping
-	DestNames tagNameMapping
+	BitFlags        map[string]uint8
+	TimeFormatFlags map[string]string
+	SrcNames        tagNameMapping
+	DestNames       tagNameMapping
 }
 
 // Field Tag name mapping
@@ -233,9 +236,34 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 		return
 	}
-
-	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
+	if opt.TimeFormat == "" && (fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct) {
 		// skip not supported type
+		return
+	}
+
+	if opt.TimeFormat != "" {
+		opt.TimeFormat = strings.ToLower(opt.TimeFormat)
+		if fromType.Kind() == reflect.Struct && to.Kind() == reflect.Int64 {
+			unixFunc := from.MethodByName("Unix")
+			unixMilliFunc := from.MethodByName("UnixMilli")
+			switch opt.TimeFormat {
+			case "unix":
+				to.Set(unixFunc.Call(([]reflect.Value{}))[0])
+			case "unixmill":
+				to.Set(unixMilliFunc.Call(([]reflect.Value{}))[0])
+			}
+		} else if fromType.Kind() == reflect.Int64 && toType.Kind() == reflect.Struct {
+			switch opt.TimeFormat {
+			case "unix", "unixmill":
+				tv := from.Interface().(int64)
+				d := 1
+				if opt.TimeFormat == "unixmill" {
+					d = 1e3
+				}
+				t := time.Unix(tv/int64(d), tv%int64(d)*1e6)
+				to.Set(reflect.ValueOf(t))
+			}
+		}
 		return
 	}
 
@@ -293,7 +321,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					continue
 				}
 
-				srcFieldName, destFieldName := getFieldName(name, flgs)
+				srcFieldName, destFieldName, timeFormat := getFieldName(name, flgs)
 				if fromField := source.FieldByName(srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
@@ -327,6 +355,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					if toField.IsValid() {
 						if toField.CanSet() {
 							if !set(toField, fromField, opt.DeepCopy, converters) {
+								opt.TimeFormat = timeFormat
 								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
 									return err
 								}
@@ -356,7 +385,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			// Copy from from method to dest field
 			for _, field := range deepFields(toType) {
 				name := field.Name
-				srcFieldName, destFieldName := getFieldName(name, flgs)
+				srcFieldName, destFieldName, _ := getFieldName(name, flgs)
 
 				var fromMethod reflect.Value
 				if source.CanAddr() {
@@ -596,7 +625,7 @@ func lookupAndCopyWithConverter(to, from reflect.Value, converters map[converter
 }
 
 // parseTags Parses struct tags and returns uint8 bit flags.
-func parseTags(tag, separation string) (flg uint8, name string, err error) {
+func parseTags(tag, separation string) (flg uint8, name, timeFormat string, err error) {
 	for _, t := range strings.Split(tag, separation) {
 		switch t {
 		case "-":
@@ -606,6 +635,10 @@ func parseTags(tag, separation string) (flg uint8, name string, err error) {
 			flg = flg | tagMust
 		case "nopanic":
 			flg = flg | tagNoPanic
+		case "time_format:unix":
+			timeFormat = "unix"
+		case "time_format:unixmill":
+			timeFormat = "unixmill"
 		default:
 			name = strings.TrimSpace(t)
 		}
@@ -616,7 +649,8 @@ func parseTags(tag, separation string) (flg uint8, name string, err error) {
 // getTagFlags Parses struct tags for bit flags, field name.
 func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option) (flags, error) {
 	flgs := flags{
-		BitFlags: map[string]uint8{},
+		BitFlags:        map[string]uint8{},
+		TimeFormatFlags: map[string]string{},
 		SrcNames: tagNameMapping{
 			FieldNameToTag: map[string]string{},
 			TagToFieldName: map[string]string{},
@@ -640,11 +674,15 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 		if tags != "" {
 			var name string
 			var err error
-			if flgs.BitFlags[field.Name], name, err = parseTags(tags, opt.TagDelimiter); err != nil {
+			var timeFormat string
+			if flgs.BitFlags[field.Name], name, timeFormat, err = parseTags(tags, opt.TagDelimiter); err != nil {
 				return flags{}, err
 			} else if name != "" {
 				flgs.DestNames.FieldNameToTag[field.Name] = name
 				flgs.DestNames.TagToFieldName[name] = field.Name
+				flgs.TimeFormatFlags[name] = timeFormat
+			} else {
+				flgs.TimeFormatFlags[field.Name] = timeFormat
 			}
 		}
 	}
@@ -655,11 +693,15 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 		if tags != "" {
 			var name string
 			var err error
-			if flgs.BitFlags[field.Name], name, err = parseTags(tags, opt.TagDelimiter); err != nil {
+			var timeFormat string
+			if flgs.BitFlags[field.Name], name, timeFormat, err = parseTags(tags, opt.TagDelimiter); err != nil {
 				return flags{}, err
 			} else if name != "" {
 				flgs.SrcNames.FieldNameToTag[field.Name] = name
 				flgs.SrcNames.TagToFieldName[name] = field.Name
+				flgs.TimeFormatFlags[name] = timeFormat
+			} else {
+				flgs.TimeFormatFlags[field.Name] = timeFormat
 			}
 		}
 	}
@@ -702,7 +744,7 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 	return
 }
 
-func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldName string) {
+func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldName string, timeFormat string) {
 	// get dest field name
 	if srcTagName, ok := flgs.SrcNames.FieldNameToTag[fieldName]; ok {
 		destFieldName = srcTagName
@@ -717,6 +759,12 @@ func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldN
 
 	// get source field name
 	srcFieldName = fieldName
+
+	if timeFlag, ok := flgs.TimeFormatFlags[fieldName]; ok {
+		timeFormat = timeFlag
+	} else if timeFlag, ok := flgs.TimeFormatFlags[destFieldName]; ok {
+		timeFormat = timeFlag
+	}
 	return
 }
 
