@@ -37,6 +37,10 @@ type Option struct {
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
 	IgnoreEmpty bool
 	DeepCopy    bool
+	// setting struct to map will set the map key UpperCase or LowerCase
+	UpperCase   bool
+	IgnoreField []string
+	// LowerCase bool
 	// Support user setting copier tag flag.The default TagFlag is copier,and TagDelimiter is a comma(",").
 	// For example: `copier:"Name,must,nopanic"` is the default format. Now you can write `num:"Name;must;nopanic;"` by setting
 	// Option{TagFlag: "num",TagDelimiter: ";"}
@@ -87,6 +91,16 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		to         = indirect(reflect.ValueOf(toValue))
 		converters map[converterPair]TypeConverter
 	)
+
+	// parse tag falg
+	opt.TagFlag = strings.TrimSpace(opt.TagFlag)
+	if opt.TagFlag == "" {
+		opt.TagFlag = "copier"
+	}
+	opt.TagDelimiter = strings.TrimSpace(opt.TagDelimiter)
+	if opt.TagDelimiter == "" {
+		opt.TagDelimiter = ","
+	}
 
 	// save convertes into map for faster lookup
 	for i := range opt.Converters {
@@ -199,6 +213,22 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				if err != nil {
 					continue
 				}
+			}
+		}
+		return
+	}
+
+	if from.Kind() == reflect.Struct && to.Kind() == reflect.Map {
+		opt.IgnoreField, _ = getTagFlag(fromType, opt)
+		for i := 0; i < from.NumField(); i++ {
+			if from.Field(i).IsZero() && opt.IgnoreEmpty || contain(opt.IgnoreField, from.Type().Field(i).Name, opt) {
+				continue
+			}
+			toValue := from.Field(i)
+			if !opt.UpperCase {
+				to.SetMapIndex(reflect.ValueOf(StringToLower(fromType.Field(i).Name)), toValue)
+			} else {
+				to.SetMapIndex(reflect.ValueOf(fromType.Field(i).Name), toValue)
 			}
 		}
 		return
@@ -567,10 +597,7 @@ func lookupAndCopyWithConverter(to, from reflect.Value, converters map[converter
 
 // parseTags Parses struct tags and returns uint8 bit flags.
 func parseTags(tag, separation string) (flg uint8, name string, err error) {
-	if strings.TrimSpace(separation) == "" {
-		separation = ","
-	}
-	for _, t := range strings.Split(tag, strings.TrimSpace(separation)) {
+	for _, t := range strings.Split(tag, separation) {
 		switch t {
 		case "-":
 			flg = tagIgnore
@@ -609,11 +636,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 
 	// Get a list dest of tags
 	for _, field := range toTypeFields {
-		tagFlag := strings.TrimSpace(opt.TagFlag)
-		if tagFlag == "" {
-			tagFlag = "copier"
-		}
-		tags := field.Tag.Get(tagFlag)
+		tags := field.Tag.Get(opt.TagFlag)
 		if tags != "" {
 			var name string
 			var err error
@@ -628,11 +651,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 
 	// Get a list source of tags
 	for _, field := range fromTypeFields {
-		tagFlag := strings.TrimSpace(opt.TagFlag)
-		if tagFlag == "" {
-			tagFlag = "copier"
-		}
-		tags := field.Tag.Get(tagFlag)
+		tags := field.Tag.Get(opt.TagFlag)
 		if tags != "" {
 			var name string
 			var err error
@@ -645,6 +664,25 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 		}
 	}
 	return flgs, nil
+}
+
+// getTagFlag get IgnoreFile tag flag
+func getTagFlag(fromType reflect.Type, opt Option) ([]string, error) {
+	var fromTypeFields []reflect.StructField
+	fromTypeFields = deepFields(fromType)
+	for _, field := range fromTypeFields {
+		tags := field.Tag.Get(opt.TagFlag)
+		if tags != "" {
+			for _, tag := range strings.Split(tags, opt.TagDelimiter) {
+				switch tag {
+				case "-":
+					opt.IgnoreField = append(opt.IgnoreField, field.Name)
+				default:
+				}
+			}
+		}
+	}
+	return opt.IgnoreField, nil
 }
 
 // checkBitFlags Checks flags for error or panic conditions.
@@ -691,4 +729,33 @@ func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
 
 	i, ok = v.Addr().Interface().(driver.Valuer)
 	return
+}
+
+func StringToLower(name string) string {
+	result := []rune{}
+	firstStr := true
+	for _, val := range name {
+		if val >= 'A' && val <= 'Z' {
+			val = val - ('A' - 'a')
+			if !firstStr && !(val == 'd' && len(result) > 0 && result[len(result)-1] == 'i') {
+				result = append(result, '_')
+			}
+		}
+		result = append(result, val)
+		firstStr = false
+	}
+	return string(result)
+}
+
+func contain(arr []string, val string, opt Option) bool {
+	for _, v := range arr {
+		if !opt.UpperCase {
+			val = StringToLower(val)
+			v = StringToLower(v)
+		}
+		if v == val {
+			return true
+		}
+	}
+	return false
 }

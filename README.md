@@ -13,6 +13,7 @@ I am a copier, I copy everything from one to another
 - Enforce copying a field with a tag
 - Ignore a field with a tag
 - Deep Copy
+- Support struct to map
 
 ## Usage
 
