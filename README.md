@@ -1,4 +1,4 @@
-# Copier^[fork 自 [https://github.com/jinzhu/copier](https://github.com/jinzhu/copier),由于使用习惯添加了部分功能但并没有被成功合并进去,两个项目使用时已有些许差异]
+# Copier[^1]
 
 I am a copier, I copy everything from one to another
 
@@ -206,3 +206,5 @@ You can help to make the project better, check out [http://gorm.io/contribute.ht
 ## License
 
 Released under the [MIT License](https://github.com/i-curve/copier/blob/master/License).
+
+[^1]: fork 自 [https://github.com/jinzhu/copier](https://github.com/jinzhu/copier),由于使用习惯添加了部分功能但并没有被成功合并进去,两个项目使用时已有些许差异
