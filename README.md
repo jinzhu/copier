@@ -1,4 +1,4 @@
-# Copier
+# Copier^[fork 自 [https://github.com/jinzhu/copier](https://github.com/jinzhu/copier),由于使用习惯添加了部分功能但并没有被成功合并进去,两个项目使用时已有些许差异]
 
 I am a copier, I copy everything from one to another
 
@@ -13,7 +13,7 @@ I am a copier, I copy everything from one to another
 - Enforce copying a field with a tag
 - Ignore a field with a tag
 - Deep Copy
-- Support struct to map
+- Support from struct to map
 - Support int64 timestamp and go time each copy
 
 ## Usage
@@ -109,10 +109,87 @@ func main() {
 }
 ```
 
+Copy struct to map
+
+```go
+	// Copy struct to map
+	map3 := map[string]interface{}
+	copier.Copy(&map3, &user)
+	fmt.Println(map3)
+	// map[age:18 name:i-curve role:Admin salary:200000]
+
+	// Copy with options
+	map4 := make(map[string]interface{})
+	copier.CopyWithOption(&map4, &user, copier.Option{
+		UpperCase:   false, //默认false, 是否设置拷贝到map的键转换为小写, 如果为true则不进行小写转化
+		IgnoreEmpty: true, // 是否忽略空值, Copy中默认是true,CopyWithOption中默认是false,需要显示指定忽略空值
+		IgnoreField: []string{"Age"}}) // 会忽略的字段范围, 如果UpperCase 为ture,这里也需要相应大写
+	fmt.Println(map4)
+	// map[Name:i-curve Role:Admin Salary:200000]
+```
+
+Copy int64 timestamp and go time
+
+```go
+	// 单值copier需要显示指定TimeFormat参数
+	now := time.Now()
+	var c int64
+	copier.CopyWithOption(&c, &now, copier.Option{TimeFormat: "unixmill"})
+	fmt.Println(now, now.UnixMilli(), c) // 毫秒
+	// 2022-04-21 09:50:36.529860392 +0800 CST m=+0.000259408 1650505836529 1650505836529
+	copier.CopyWithOption(&c, &now, copier.Option{TimeFormat: "unix"}) // 秒
+	// 2022-04-21 09:51:31.793835808 +0800 CST m=+0.000226917 1650505891793 1650505891
+	var timstreap int64 = 1650505969162
+	b := time.Time{}
+	copier.CopyWithOption(&b, &timstreap, copier.Option{TimeFormat: "unixmill"})
+	fmt.Println(b)
+	// 2022-04-21 09:52:49.162 +0800 CST
+
+	// Struct: 详情请看copier_curve_test.go
+	type TimInt struct {
+		Time1 int64
+		Time2 int64
+		Time3 int64
+		Time4 int64
+		Time5 *int64
+		Time6 *int64
+		Time7 int64
+	}
+	type TimTim struct {
+		Time1 time.Time  `copier:"time_format:unix"`
+		Time2 time.Time  `copier:"-,time_format:unix"`
+		Time3 *time.Time `copier:"time_format:unix"`
+		Time4 *time.Time `copier:"time_format:unixmill"`
+		Time5 time.Time  `copier:"time_format:unix"`
+		Time6 time.Time  `copier:"time_format:unix"`
+		Time7 time.Time
+	}
+	now := time.Now()
+	var tim = TimTim{
+		Time1: now,
+		Time2: now,
+		Time3: &now,
+		Time4: &now,
+	}
+	var num TimInt
+	copier.Copy(&num, &tim)
+	fmt.Printf("%+v\n", num)
+	// {Time1:1650506317 Time2:0 Time3:1650506317 Time4:1650506317495 Time5:<nil> Time6:<nil> Time7:0}
+```
+
 ### Copy with Option
 
 ```go
-copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
+	copier.CopyWithOption(&to, &from,
+		copier.Option{
+			IgnoreEmpty: true, // 是否忽略空值, copier中为true
+			DeepCopy: true,
+			UpperCase:  false, // struct to map拷贝时, 设定键名是大驼峰还是下划线小写
+			IgnoreField: []string{""}, // 忽略拷贝的字段集
+			TimeFormat: "unix", // 时间和int64拷贝时, 时间格式.只支持: unix(秒), unixmill(毫秒)
+			TagFlag: "copier", // tag的名, 默认为copier, 可以设置为其他名字如:json
+			TagDelimiter: ",", // tao内容的分隔符, 默认为","
+		})
 ```
 
 ## Contributing
@@ -124,8 +201,7 @@ You can help to make the project better, check out [http://gorm.io/contribute.ht
 **i-curve**
 
 - <http://github.com/i-curve>
-- <wosmvp@gmail.com>
-- <http://twitter.com/zhangi-curve>
+- <i-curve@qq.com>
 
 ## License
 
