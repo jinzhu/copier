@@ -15,11 +15,16 @@ type TypeStruct1 struct {
 	Field6 []TypeStruct2
 	Field7 []*TypeStruct2
 	Field8 []TypeStruct2
+	Field9 []string
 }
 
 type TypeStruct2 struct {
 	Field1 int
 	Field2 string
+	Field3 []TypeStruct2
+	Field4 *TypeStruct2
+	Field5 *TypeStruct2
+	Field9 string
 }
 
 type TypeStruct3 struct {
@@ -118,6 +123,10 @@ func TestAssignableType(t *testing.T) {
 
 	checkType2WithType4(ts.Field3, ts3.Field3, t, "Field3")
 	checkType2WithType4(*ts.Field4, *ts3.Field4, t, "Field4")
+
+	if len(ts3.Field5) != len(ts.Field5) {
+		t.Fatalf("fields not equal, got %v, expects: %v", len(ts3.Field5), len(ts.Field5))
+	}
 
 	for idx, f := range ts.Field5 {
 		checkType2WithType4(*f, *(ts3.Field5[idx]), t, "Field5")

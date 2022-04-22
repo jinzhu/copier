@@ -12,7 +12,7 @@ jobs:
   ci:
     strategy:
       matrix:
-        go: ['1.15', '1.14', '1.13']
+        go: ['1.16', '1.17']
         platform: [ubuntu-latest, macos-latest] # can not run in windows OS
     runs-on: ${{ matrix.platform }}
 
