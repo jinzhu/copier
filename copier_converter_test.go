@@ -185,3 +185,58 @@ func TestCopyWithConverterStrToStrPointer(t *testing.T) {
 		t.Fatalf("got %q, wanted nil", *dst.Field1)
 	}
 }
+
+func TestCopyWithConverterAndFNWithName(t *testing.T) {
+	type SrcStruct struct {
+		Field1 string
+		Field2 string
+	}
+
+	type DestStruct struct {
+		Field1 string
+		Field2 string
+	}
+
+	src := SrcStruct{
+		Field1: "test",
+		Field2: "test2",
+	}
+
+	var dst DestStruct
+
+	err := copier.CopyWithOption(&dst, &src, copier.Option{
+		IgnoreEmpty: true,
+		DeepCopy:    true,
+		Converters: []copier.TypeConverter{
+			{
+				SrcType: copier.String,
+				DstType: copier.String,
+				FnWithName: func(fromFieldName, toFieldName string, src interface{}) (interface{}, error) {
+					s, ok := src.(string)
+
+					if fromFieldName != "Field1" && fromFieldName != "Field2" {
+						t.Fatalf("fieldName is not in from object : f1:%s", fromFieldName)
+					}
+
+					if !ok {
+						return nil, errors.New("src type not matching")
+					}
+
+					return s + "2", nil
+				},
+			},
+		},
+	})
+
+	if err != nil {
+		t.Fatalf(`Should be able to copy from src to dst object. %v`, err)
+		return
+	}
+
+	if dst.Field1 != "test2" {
+		t.Fatalf("got %q, wanted %q", dst.Field1, "test2")
+	}
+	if dst.Field2 != "test22" {
+		t.Fatalf("got %q, wanted %q", dst.Field2, "test22")
+	}
+}
