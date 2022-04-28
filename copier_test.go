@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -1203,7 +1204,7 @@ func TestCopyMapOfInt(t *testing.T) {
 func TestCopyMapOfSliceValue(t *testing.T) {
 	// case1: map's value is a simple slice
 	key, value := 2, 3
-	src := map[int][]int{key: []int{value} }
+	src := map[int][]int{key: []int{value}}
 	dst1 := map[int][]int{}
 	var dst2 map[int][]int
 	err := copier.Copy(&dst1, src)
@@ -1240,10 +1241,10 @@ func TestCopyMapOfSliceValue(t *testing.T) {
 	// case2: map's value is a slice whose element is map
 	key1, key2 := 2, 3
 	value = 4
-	s := map[int][]map[int]int{key1: []map[int]int{ {key2: value} } }
-	d1 := map[int][]map[int]int{key1: []map[int]int{ {key1: key2 } } }
-	d2 := map[int][]map[int]int{key1: []map[int]int{ } }
-	d3 := map[int][]map[int]int{key1:  nil }
+	s := map[int][]map[int]int{key1: []map[int]int{{key2: value}}}
+	d1 := map[int][]map[int]int{key1: []map[int]int{{key1: key2}}}
+	d2 := map[int][]map[int]int{key1: []map[int]int{}}
+	d3 := map[int][]map[int]int{key1: nil}
 	d4 := map[int][]map[int]int{}
 	d5 := map[int][]map[int]int(nil)
 	ms := []map[int][]map[int]int{d1, d2, d3, d4, d5}
@@ -1267,7 +1268,7 @@ func TestCopyMapOfSliceValue(t *testing.T) {
 			for k, v := range m {
 				if k != key2 || v != value {
 					t.Errorf("Map's slice value should be copied recursively")
-				} 
+				}
 			}
 		}
 	}
@@ -1276,7 +1277,7 @@ func TestCopyMapOfSliceValue(t *testing.T) {
 func TestCopyMapOfPtrValue(t *testing.T) {
 	intV := 3
 	intv := intV
-	src := map[int]*int{2: &intv }
+	src := map[int]*int{2: &intv}
 	dst1 := map[int]*int{}
 	var dst2 map[int]*int
 	err := copier.Copy(&dst1, src)
@@ -1295,7 +1296,7 @@ func TestCopyMapOfPtrValue(t *testing.T) {
 		}
 
 		v3, ok := dst2[k]
-		if !ok || v3 == nil ||*v3 != *v1 || *v3 != intV {
+		if !ok || v3 == nil || *v3 != *v1 || *v3 != intV {
 			t.Errorf("Map should be copied")
 		}
 	}
@@ -1312,6 +1313,43 @@ func TestCopyWithOption(t *testing.T) {
 		t.Errorf("Field A should not be copied")
 	} else if to.D != from.D {
 		t.Errorf("Field D should be copied")
+	}
+}
+
+type fromMapStruct struct {
+	A int
+	B string
+}
+
+func TestCopyMap2StructWithOption(t *testing.T) {
+	from := map[string]interface{}{
+		"A": "456",
+		"B": "sss",
+	}
+	to := &fromMapStruct{}
+	if err := copier.CopyWithOption(&to, from, copier.Option{
+		Converters: []copier.TypeConverter{
+			{
+				SrcType: copier.String,
+				DstType: copier.Int,
+				Fn: func(src interface{}) (interface{}, error) {
+					s, ok := src.(string)
+
+					if !ok {
+						return nil, errors.New("src type not matching")
+					}
+					return strconv.Atoi(s)
+				},
+			},
+		},
+	}); err != nil {
+		t.Error("Should not raise error")
+	}
+
+	if to.A != from["A"] {
+		t.Errorf("Field A should be copied")
+	} else if to.B != from["B"] {
+		t.Errorf("Field B should be copied")
 	}
 }
 
@@ -1520,7 +1558,6 @@ func TestDeepCopyTime(t *testing.T) {
 	}
 }
 
-
 func TestNestedPrivateData(t *testing.T) {
 	type hasPrivate struct {
 		data int
@@ -1557,7 +1594,6 @@ func TestNestedPrivateData(t *testing.T) {
 		t.Errorf("unexpected difference between shallow and deep copy")
 	}
 }
-
 
 func TestDeepMapCopyTime(t *testing.T) {
 	t1 := time.Now()
@@ -1611,7 +1647,7 @@ func TestDeepCopySimpleTime(t *testing.T) {
 	}
 }
 
-type TimeWrapper struct{
+type TimeWrapper struct {
 	time.Time
 }
 

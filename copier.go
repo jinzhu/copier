@@ -84,7 +84,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		converters map[converterPair]TypeConverter
 	)
 
-	// save convertes into map for faster lookup
+	// save converters into map for faster lookup
 	for i := range opt.Converters {
 		if converters == nil {
 			converters = make(map[converterPair]TypeConverter)
@@ -168,6 +168,18 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				}
 				elemType = reflect.PtrTo(elemType)
 				toValue = toValue.Addr()
+			}
+		}
+		return
+	}
+
+	if from.Kind() != reflect.Slice && fromType.Kind() == reflect.Map && toType.Kind() == reflect.Struct {
+		// only support map[string]interface{} to struct
+		for _, k := range from.MapKeys() {
+			if _, ok := toType.FieldByName(k.String()); ok {
+				if !set(to.FieldByName(s), from.MapIndex(k).Elem(), opt.DeepCopy, converters) {
+					return fmt.Errorf("%w map to struct, old key: %v, new filed: %v", ErrNotSupported, k.Type(), toType.Key())
+				}
 			}
 		}
 		return
