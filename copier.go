@@ -196,8 +196,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
-		// skip not supported type
-		return
+		return ErrNotSupported
 	}
 
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
