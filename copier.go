@@ -518,6 +518,10 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		rv := reflect.ValueOf(v)
 		if rv.Type().AssignableTo(to.Type()) {
 			to.Set(rv)
+		} else if from.Kind() == reflect.Ptr {
+			return set(to, from.Elem(), deepCopy, converters)
+		} else {
+			return false
 		}
 	} else if from.Kind() == reflect.Ptr {
 		return set(to, from.Elem(), deepCopy, converters)
