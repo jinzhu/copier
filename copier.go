@@ -232,7 +232,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType)
+		var flgs flags
+		flgs, err = getFlags(dest, source, toType, fromType)
 		if err != nil {
 			return err
 		}
@@ -247,7 +248,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				name := field.Name
 
 				// Get bit flags for field
-				fieldFlags, _ := flgs.BitFlags[name]
+				fieldFlags := flgs.BitFlags[name]
 
 				// Check if we should ignore copying
 				if (fieldFlags & tagIgnore) != 0 {
@@ -537,21 +538,17 @@ func lookupAndCopyWithConverter(to, from reflect.Value, converters map[converter
 
 	if cnv, ok := converters[pair]; ok {
 		result, err := cnv.Fn(from.Interface())
-
 		if err != nil {
 			return false, err
 		}
-
 		if result != nil {
 			to.Set(reflect.ValueOf(result))
 		} else {
 			// in case we've got a nil value to copy
 			to.Set(reflect.Zero(to.Type()))
 		}
-
 		return true, nil
 	}
-
 	return false, nil
 }
 
@@ -640,7 +637,7 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 				err = fmt.Errorf("field %s has must tag but was not copied", name)
 				return
 			case flgs&(tagMust) != 0:
-				panic(fmt.Sprintf("Field %s has must tag but was not copied", name))
+				panic(fmt.Sprintf("field %s has must tag but was not copied", name))
 			}
 		}
 	}
@@ -682,7 +679,6 @@ func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldN
 }
 
 func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
-
 	if !v.CanAddr() {
 		i, ok = v.Interface().(driver.Valuer)
 		return
