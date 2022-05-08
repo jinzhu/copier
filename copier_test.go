@@ -2,6 +2,7 @@ package copier_test
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -1608,6 +1609,39 @@ func TestDeepCopySimpleTime(t *testing.T) {
 	}
 	if !from.Equal(to) {
 		t.Errorf("to (%v) value should equal from (%v) value", to, from)
+	}
+}
+
+func TestDeepCopyWithNilByteSlices(t *testing.T) {
+	type From struct {
+		Flags json.RawMessage
+	}
+
+	type To struct {
+		Flags json.RawMessage
+	}
+
+	from := From{}
+	to := To{}
+
+	err := copier.CopyWithOption(&to, &from, copier.Option{
+		DeepCopy: true,
+	})
+	if err != nil {
+		t.Error("error when copying")
+	}
+	if to.Flags != nil {
+		t.Error("Flags byte array is not nil", to.Flags, from.Flags)
+	}
+
+	_, err = json.Marshal(from)
+	if err != nil {
+		t.Error("error when marshalling from struct")
+	}
+
+	_, err = json.Marshal(to)
+	if err != nil {
+		t.Error("error when marshalling from struct")
 	}
 }
 
