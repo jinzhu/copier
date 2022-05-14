@@ -34,7 +34,7 @@ const (
 
 // Option sets copy options
 type Option struct {
-	// setting this value to true will ignore copying zero values of all the fields, including bools, as well as a
+	// setting this value to true will ignore copying zero values of all the fields, including booleans, as well as a
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
 	IgnoreEmpty bool
 	DeepCopy    bool
@@ -84,7 +84,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		converters map[converterPair]TypeConverter
 	)
 
-	// save convertes into map for faster lookup
+	// save converters into map for faster lookup
 	for i := range opt.Converters {
 		if converters == nil {
 			converters = make(map[converterPair]TypeConverter)
@@ -313,7 +313,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				}
 			}
 
-			// Copy from from method to dest field
+			// Copy from src method to dest field
 			for _, field := range deepFields(toType) {
 				name := field.Name
 				srcFieldName, destFieldName := getFieldName(name, flgs)
