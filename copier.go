@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 	"unicode"
 )
 
@@ -39,6 +40,22 @@ type Option struct {
 	IgnoreEmpty bool
 	DeepCopy    bool
 	Converters  []TypeConverter
+}
+
+func (opt Option) converters() map[converterPair]TypeConverter {
+	var converters = map[converterPair]TypeConverter{}
+
+	// save converters into map for faster lookup
+	for i := range opt.Converters {
+		pair := converterPair{
+			SrcType: reflect.TypeOf(opt.Converters[i].SrcType),
+			DstType: reflect.TypeOf(opt.Converters[i].DstType),
+		}
+
+		converters[pair] = opt.Converters[i]
+	}
+
+	return converters
 }
 
 type TypeConverter struct {
@@ -81,22 +98,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		amount     = 1
 		from       = indirect(reflect.ValueOf(fromValue))
 		to         = indirect(reflect.ValueOf(toValue))
-		converters map[converterPair]TypeConverter
+		converters = opt.converters()
 	)
-
-	// save convertes into map for faster lookup
-	for i := range opt.Converters {
-		if converters == nil {
-			converters = make(map[converterPair]TypeConverter)
-		}
-
-		pair := converterPair{
-			SrcType: reflect.TypeOf(opt.Converters[i].SrcType),
-			DstType: reflect.TypeOf(opt.Converters[i].DstType),
-		}
-
-		converters[pair] = opt.Converters[i]
-	}
 
 	if !to.CanAddr() {
 		return ErrInvalidCopyDestination
@@ -394,7 +397,17 @@ func shouldIgnore(v reflect.Value, ignoreEmpty bool) bool {
 	return ignoreEmpty && v.IsZero()
 }
 
+var deepFieldsLock sync.RWMutex
+var deepFieldsMap = make(map[reflect.Type][]reflect.StructField)
+
 func deepFields(reflectType reflect.Type) []reflect.StructField {
+	deepFieldsLock.RLock()
+	cache, ok := deepFieldsMap[reflectType]
+	deepFieldsLock.RUnlock()
+	if ok {
+		return cache
+	}
+	var res []reflect.StructField
 	if reflectType, _ = indirectType(reflectType); reflectType.Kind() == reflect.Struct {
 		fields := make([]reflect.StructField, 0, reflectType.NumField())
 
@@ -411,11 +424,13 @@ func deepFields(reflectType reflect.Type) []reflect.StructField {
 				}
 			}
 		}
-
-		return fields
+		res = fields
 	}
 
-	return nil
+	deepFieldsLock.Lock()
+	deepFieldsMap[reflectType] = res
+	deepFieldsLock.Unlock()
+	return res
 }
 
 func indirect(reflectValue reflect.Value) reflect.Value {
@@ -537,7 +552,6 @@ func lookupAndCopyWithConverter(to, from reflect.Value, converters map[converter
 
 	if cnv, ok := converters[pair]; ok {
 		result, err := cnv.Fn(from.Interface())
-
 		if err != nil {
 			return false, err
 		}
@@ -682,7 +696,6 @@ func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldN
 }
 
 func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
-
 	if !v.CanAddr() {
 		i, ok = v.Interface().(driver.Valuer)
 		return
