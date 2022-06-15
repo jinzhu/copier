@@ -1629,24 +1629,18 @@ func TestDeepCopyAnonymousFieldTime(t *testing.T) {
 func TestSqlNullFiled(t *testing.T) {
 
 	type sqlStruct struct {
-		SaleTime          sql.NullByte
-		SaleTimeDetail    sql.NullInt16
 		MkId              sql.NullInt64
 		MkExpiryDateType  sql.NullInt32
 		MkExpiryDateStart sql.NullString
 	}
 
 	type dataStruct struct {
-		SaleTime          int8
-		SaleTimeDetail    int16
 		MkId              int64
 		MkExpiryDateType  int32
 		MkExpiryDateStart string
 	}
 
 	from := sqlStruct{
-		SaleTime:          sql.NullByte{Byte: 1, Valid: true},
-		SaleTimeDetail:    sql.NullInt16{Int16: 2, Valid: true},
 		MkId:              sql.NullInt64{Int64: 3, Valid: true},
 		MkExpiryDateType:  sql.NullInt32{Int32: 4, Valid: true},
 		MkExpiryDateStart: sql.NullString{String: "5", Valid: true},
@@ -1658,15 +1652,15 @@ func TestSqlNullFiled(t *testing.T) {
 	if err != nil {
 		t.Error("should not error")
 	}
-	if from.SaleTimeDetail.Int16 != to.SaleTimeDetail {
-		t.Errorf("to (%v) value should equal from (%v) value", to.SaleTimeDetail, from.SaleTimeDetail.Int16)
+	if from.MkId.Int64 != to.MkId {
+		t.Errorf("to (%v) value should equal from (%v) value", to.MkId, from.MkId.Int64)
 	}
 
 	if from.MkExpiryDateStart.String != to.MkExpiryDateStart {
 		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateStart, from.MkExpiryDateStart.String)
 	}
 
-	if from.SaleTime.Byte != uint8(to.SaleTime) {
-		t.Errorf("to (%v) value should equal from (%v) value", to.SaleTime, from.SaleTime.Byte)
+	if from.MkExpiryDateType.Int32 != to.MkExpiryDateType {
+		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateType, from.MkExpiryDateType.Int32)
 	}
 }
