@@ -67,7 +67,6 @@ func TestCopyWithTypeConverters(t *testing.T) {
 			},
 		},
 	})
-
 	if err != nil {
 		t.Fatalf(`Should be able to copy from src to dst object. %v`, err)
 		return
@@ -127,7 +126,6 @@ func TestCopyWithConverterAndAnnotation(t *testing.T) {
 			},
 		},
 	})
-
 	if err != nil {
 		t.Fatalf(`Should be able to copy from src to dst object. %v`, err)
 		return
@@ -175,7 +173,6 @@ func TestCopyWithConverterStrToStrPointer(t *testing.T) {
 			},
 		},
 	})
-
 	if err != nil {
 		t.Fatalf(`Should be able to copy from src to dst object. %v`, err)
 		return
