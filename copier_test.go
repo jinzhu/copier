@@ -1206,6 +1206,7 @@ func TestCopyMapOfSliceValue(t *testing.T) {
 	// case1: map's value is a simple slice
 	key, value := 2, 3
 	src := map[int][]int{key: {value}}
+
 	dst1 := map[int][]int{}
 	var dst2 map[int][]int
 	err := copier.Copy(&dst1, src)
@@ -1624,5 +1625,44 @@ func TestDeepCopyAnonymousFieldTime(t *testing.T) {
 	}
 	if !from.Time.Equal(to.Time) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Time, from.Time)
+	}
+}
+
+func TestSqlNullFiled(t *testing.T) {
+
+	type sqlStruct struct {
+		MkId              sql.NullInt64
+		MkExpiryDateType  sql.NullInt32
+		MkExpiryDateStart sql.NullString
+	}
+
+	type dataStruct struct {
+		MkId              int64
+		MkExpiryDateType  int32
+		MkExpiryDateStart string
+	}
+
+	from := sqlStruct{
+		MkId:              sql.NullInt64{Int64: 3, Valid: true},
+		MkExpiryDateType:  sql.NullInt32{Int32: 4, Valid: true},
+		MkExpiryDateStart: sql.NullString{String: "5", Valid: true},
+	}
+
+	to := dataStruct{}
+
+	err := copier.Copy(&to, from)
+	if err != nil {
+		t.Error("should not error")
+	}
+	if from.MkId.Int64 != to.MkId {
+		t.Errorf("to (%v) value should equal from (%v) value", to.MkId, from.MkId.Int64)
+	}
+
+	if from.MkExpiryDateStart.String != to.MkExpiryDateStart {
+		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateStart, from.MkExpiryDateStart.String)
+	}
+
+	if from.MkExpiryDateType.Int32 != to.MkExpiryDateType {
+		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateType, from.MkExpiryDateType.Int32)
 	}
 }
