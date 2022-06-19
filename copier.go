@@ -250,7 +250,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				name := field.Name
 
 				// Get bit flags for field
-				fieldFlags, _ := flgs.BitFlags[name]
+				fieldFlags := flgs.BitFlags[name]
 
 				// Check if we should ignore copying
 				if (fieldFlags & tagIgnore) != 0 {
