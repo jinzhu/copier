@@ -1666,3 +1666,18 @@ func TestSqlNullFiled(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateType, from.MkExpiryDateType.Int32)
 	}
 }
+
+func TestCopy(t *testing.T) {
+	now := time.Now()
+	age := int32(28)
+	src := &User{
+		Age:      14,
+		Name:     "tom",
+		Birthday: &now,
+		FakeAge:  &age,
+		Notes:    []string{"hello"},
+	}
+	var tar *User
+	err := copier.Copy(&tar, src)
+	fmt.Println(err, tar, reflect.DeepEqual(src, tar))
+}

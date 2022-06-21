@@ -102,7 +102,12 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	)
 
 	if !to.CanAddr() {
-		return ErrInvalidCopyDestination
+		toPtr := preIndirect(reflect.ValueOf(toValue))
+		if !toPtr.CanSet() {
+			return ErrInvalidCopyDestination
+		}
+		to = reflect.New(toPtr.Type().Elem())
+		toPtr.Set(to)
 	}
 
 	// Return is from value is invalid
@@ -431,6 +436,16 @@ func deepFields(reflectType reflect.Type) []reflect.StructField {
 	deepFieldsMap[reflectType] = res
 	deepFieldsLock.Unlock()
 	return res
+}
+
+func preIndirect(reflectValue reflect.Value) reflect.Value {
+	for reflectValue.Kind() == reflect.Ptr {
+		if !reflectValue.Elem().CanAddr() {
+			break
+		}
+		reflectValue = reflectValue.Elem()
+	}
+	return reflectValue
 }
 
 func indirect(reflectValue reflect.Value) reflect.Value {
