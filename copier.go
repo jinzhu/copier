@@ -108,6 +108,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 		to = reflect.New(toPtr.Type().Elem())
 		toPtr.Set(to)
+		// reindirect
+		if to = indirect(reflect.ValueOf(toValue)); !to.CanAddr() {
+			return ErrInvalidCopyDestination
+		}
 	}
 
 	// Return is from value is invalid
