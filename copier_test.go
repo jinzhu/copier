@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -26,6 +27,16 @@ func (user User) DoubleAge() int32 {
 	return 2 * user.Age
 }
 
+type Logger interface {
+	LogAction(string)
+}
+
+type EmployeeLogger struct {
+	Level string
+}
+
+func (l *EmployeeLogger) LogAction(action string) {}
+
 type Employee struct {
 	_User     *User
 	Name      string
@@ -35,13 +46,14 @@ type Employee struct {
 	FakeAge   int
 	EmployeID int64
 	DoubleAge int32
-	SuperRule string
+	SuperRole string
 	Notes     []*string
 	flags     []byte
+	Logger    Logger
 }
 
 func (employee *Employee) Role(role string) {
-	employee.SuperRule = "Super " + role
+	employee.SuperRole = "Super " + role
 }
 
 func checkEmployee(employee Employee, user User, t *testing.T, testCase string) {
@@ -70,7 +82,7 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	if employee.DoubleAge != user.DoubleAge() {
 		t.Errorf("%v: Copy from method doesn't work", testCase)
 	}
-	if employee.SuperRule != "Super "+user.Role {
+	if employee.SuperRole != "Super "+user.Role {
 		t.Errorf("%v: Copy to method doesn't work", testCase)
 	}
 
@@ -103,7 +115,7 @@ func TestCopySameStructWithPointerField(t *testing.T) {
 func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string) {
 	if user == nil {
 		if employee.Name != "" || employee.Nickname != nil || employee.Birthday != nil || employee.Age != 0 ||
-			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil {
+			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRole != "" || employee.Notes != nil {
 			t.Errorf("%v : employee should be empty", testCase)
 		}
 		return
@@ -140,6 +152,84 @@ func TestCopyStruct(t *testing.T) {
 	employee5 := &Employee{}
 	copier.Copy(&employee5, &employee)
 	checkEmployee(*employee5, user, t, "Copy From Employee To Employee")
+}
+
+func TestCopyStructWithConverter(t *testing.T) {
+	employee := Employee{Name: "Jinzhu", Age: 18, DoubleAge: 36, flags: []byte{'x'}, Logger: &EmployeeLogger{Level: "debug"}}
+	converters := []copier.TypeConverter{
+		// string converter
+		copier.TypeConverter{
+			SrcType: "",
+			DstType: "",
+			Fn: func(src interface{}) (interface{}, error) {
+				return strings.ToUpper(src.(string)), nil
+			},
+		},
+		// byte converter
+		copier.TypeConverter{
+			SrcType: []byte{},
+			DstType: []byte{},
+			Fn: func(src interface{}) (interface{}, error) {
+				return []byte{}, nil
+			},
+		},
+		// int64 converter
+		copier.TypeConverter{
+			SrcType: int64(0),
+			DstType: int64(0),
+			Fn: func(src interface{}) (interface{}, error) {
+				return int64(99), nil
+			},
+		},
+		// Logger converter
+		copier.TypeConverter{
+			SrcType: &EmployeeLogger{},
+			DstType: &EmployeeLogger{},
+			Fn: func(src interface{}) (interface{}, error) {
+				return &EmployeeLogger{Level: src.(*EmployeeLogger).Level + "-xxx"}, nil
+			},
+		},
+	}
+
+	// copy without converters
+	copy1 := Employee{}
+	copier.CopyWithOption(&copy1, &employee, copier.Option{})
+	if copy1.Name != employee.Name {
+		t.Errorf("`Name` field hasn't been copied correctly.")
+	}
+	if copy1.Age != employee.Age {
+		t.Errorf("`Age` field hasn't been copied correctly.")
+	}
+	if copy1.DoubleAge != employee.DoubleAge {
+		t.Errorf("`DoubleAge` field hasn't been copied correctly.")
+	}
+	if len(copy1.flags) != len(employee.flags) {
+		t.Errorf("`flags` field hasn't been copied correctly.")
+	}
+	if copy1.Logger.(*EmployeeLogger).Level != employee.Logger.(*EmployeeLogger).Level {
+		t.Errorf("`Logger` field hasn't been copied correctly.")
+	}
+
+	// copy with converter
+	copy2 := Employee{}
+	copier.CopyWithOption(&copy2, &employee, copier.Option{Converters: converters})
+	if copy2.Name != strings.ToUpper(employee.Name) {
+		t.Errorf("`Name` field hasn't been converted correctly.")
+	}
+	if copy2.Age != 99 {
+		t.Errorf("`Age` field hasn't been converted correctly.")
+	}
+	if copy2.DoubleAge != employee.DoubleAge {
+		t.Errorf("`DoubleAge` field hasn't been copied correctly.")
+	}
+	if len(copy2.flags) != len(employee.flags) { // `flags` is unexported, so it won't be converted
+		t.Errorf("`flags` field hasn't been copied correctly.")
+	}
+	if copy2.Logger.(*EmployeeLogger).Level != employee.Logger.(*EmployeeLogger).Level+"-xxx" {
+		t.Errorf("`Logger` field hasn't been converted correctly.")
+	}
+
+	fmt.Println("employee:", copy2)
 }
 
 func TestCopyFromStructToSlice(t *testing.T) {
