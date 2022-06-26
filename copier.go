@@ -58,6 +58,11 @@ func (opt Option) converters() map[converterPair]TypeConverter {
 	return converters
 }
 
+// TypeConverter defines a custom type conversion from a source type to a
+// destination type. When the copier encounters values that exactly match the
+// source and destination type, it will use the conversion function `Fn` to
+// convert the value. Beware, that the converter doesn't work on unexported
+// struct fields.
 type TypeConverter struct {
 	SrcType interface{}
 	DstType interface{}
@@ -547,9 +552,26 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 
 // lookupAndCopyWithConverter looks up the type pair, on success the TypeConverter Fn func is called to copy src to dst field.
 func lookupAndCopyWithConverter(to, from reflect.Value, converters map[converterPair]TypeConverter) (copied bool, err error) {
+	// resolve the actual type behind an interface, because the converters
+	// cannot properly work with interface types
+	fromType := from.Type()
+	if fromType.Kind() == reflect.Interface && !from.IsNil() {
+		fromType = reflect.TypeOf(from.Interface())
+	}
+	toType := to.Type()
+	if toType.Kind() == reflect.Interface {
+		if to.IsNil() {
+			// if the source type implements the interface, use the type of the source
+			if fromType.Implements(toType) {
+				toType = fromType
+			}
+		} else {
+			toType = reflect.TypeOf(from.Interface())
+		}
+	}
 	pair := converterPair{
-		SrcType: from.Type(),
-		DstType: to.Type(),
+		SrcType: fromType,
+		DstType: toType,
 	}
 
 	if cnv, ok := converters[pair]; ok {
