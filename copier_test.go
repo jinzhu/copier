@@ -1666,3 +1666,27 @@ func TestSqlNullFiled(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateType, from.MkExpiryDateType.Int32)
 	}
 }
+
+func TestDefaultSourceFlags(t *testing.T) {
+	var A struct {
+		MappedField  string
+		MissingField string
+	}
+
+	var B struct {
+		MappedField string
+	}
+
+	err := copier.CopyWithOption(&B, &A, copier.Option{
+		DefaultSourceFlags: copier.TagMust | copier.TagNoPanic,
+	})
+
+	if err == nil {
+		t.Error("expected an error")
+	}
+
+	expectedErr := "field MissingField has must tag but was not copied"
+	if err.Error() != expectedErr {
+		t.Errorf("Expected: %s\nActual: %s", expectedErr, err.Error())
+	}
+}

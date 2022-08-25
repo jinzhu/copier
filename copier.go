@@ -13,11 +13,11 @@ import (
 // These flags define options for tag handling
 const (
 	// Denotes that a destination field must be copied to. If copying fails then a panic will ensue.
-	tagMust uint8 = 1 << iota
+	TagMust uint8 = 1 << iota
 
 	// Denotes that the program should not panic when the must flag is on and
 	// value is not copied. The program will return an error instead.
-	tagNoPanic
+	TagNoPanic
 
 	// Ignore a destination field from being copied to.
 	tagIgnore
@@ -37,9 +37,10 @@ const (
 type Option struct {
 	// setting this value to true will ignore copying zero values of all the fields, including bools, as well as a
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
-	IgnoreEmpty bool
-	DeepCopy    bool
-	Converters  []TypeConverter
+	IgnoreEmpty        bool
+	DeepCopy           bool
+	Converters         []TypeConverter
+	DefaultSourceFlags uint8
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -235,7 +236,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType)
+		flgs, err := getFlags(dest, source, toType, fromType, opt.DefaultSourceFlags)
 		if err != nil {
 			return err
 		}
@@ -370,6 +371,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		err = checkBitFlags(flgs.BitFlags)
+		if err != nil {
+			return err
+		}
 	}
 
 	return
@@ -579,9 +583,9 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 			flg = tagIgnore
 			return
 		case "must":
-			flg = flg | tagMust
+			flg = flg | TagMust
 		case "nopanic":
-			flg = flg | tagNoPanic
+			flg = flg | TagNoPanic
 		default:
 			if unicode.IsUpper([]rune(t)[0]) {
 				name = strings.TrimSpace(t)
@@ -594,7 +598,7 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 }
 
 // getTagFlags Parses struct tags for bit flags, field name.
-func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, error) {
+func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, defaultSourceFlags uint8) (flags, error) {
 	flgs := flags{
 		BitFlags: map[string]uint8{},
 		SrcNames: tagNameMapping{
@@ -641,6 +645,8 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 				flgs.SrcNames.FieldNameToTag[field.Name] = name
 				flgs.SrcNames.TagToFieldName[name] = field.Name
 			}
+		} else if defaultSourceFlags != 0 {
+			flgs.BitFlags[field.Name] = defaultSourceFlags
 		}
 	}
 	return flgs, nil
@@ -652,10 +658,10 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 	for name, flgs := range flagsList {
 		if flgs&hasCopied == 0 {
 			switch {
-			case flgs&tagMust != 0 && flgs&tagNoPanic != 0:
+			case flgs&TagMust != 0 && flgs&TagNoPanic != 0:
 				err = fmt.Errorf("field %s has must tag but was not copied", name)
 				return
-			case flgs&(tagMust) != 0:
+			case flgs&(TagMust) != 0:
 				panic(fmt.Sprintf("Field %s has must tag but was not copied", name))
 			}
 		}

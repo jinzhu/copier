@@ -115,6 +115,25 @@ func main() {
 copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 ```
 
+**Specifying default flags**
+```go
+var A struct {
+	MappedField  string
+	MissingField string
+}
+
+var B struct {
+	MappedField string
+}
+
+err := copier.CopyWithOption(&B, &A, copier.Option{
+	DefaultSourceFlags: copier.TagMust | copier.TagNoPanic,
+})
+
+// Outputs "field MissingField has must tag but was not copied"
+fmt.Print(err)
+```
+
 ## Contributing
 
 You can help to make the project better, check out [http://gorm.io/contribute.html](http://gorm.io/contribute.html) for things you can do.
