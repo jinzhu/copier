@@ -1666,3 +1666,33 @@ func TestSqlNullFiled(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateType, from.MkExpiryDateType.Int32)
 	}
 }
+
+func TestEmptySlice(t *testing.T) {
+	type Str1 string
+	type Str2 string
+	type Input1 struct {
+		Val Str1
+	}
+	type Input2 struct {
+		Val Str2
+	}
+	to := []*Input1(nil)
+	from := []*Input2{}
+	err := copier.Copy(&to, &from)
+	if err != nil {
+		t.Error("should not error")
+	}
+	if from == nil {
+		t.Error("from should be empty slice not nil")
+	}
+
+	to = []*Input1(nil)
+	from = []*Input2(nil)
+	err = copier.Copy(&to, &from)
+	if err != nil {
+		t.Error("should not error")
+	}
+	if from != nil {
+		t.Error("from should be empty slice nil")
+	}
+}
