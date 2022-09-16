@@ -176,26 +176,27 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
-	if from.Kind() == reflect.Slice && to.Kind() == reflect.Slice && fromType.ConvertibleTo(toType) {
+	if from.Kind() == reflect.Slice && to.Kind() == reflect.Slice {
 		if to.IsNil() {
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)
 		}
+		if fromType.ConvertibleTo(toType) {
+			for i := 0; i < from.Len(); i++ {
+				if to.Len() < i+1 {
+					to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
+				}
 
-		for i := 0; i < from.Len(); i++ {
-			if to.Len() < i+1 {
-				to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
-			}
-
-			if !set(to.Index(i), from.Index(i), opt.DeepCopy, converters) {
-				// ignore error while copy slice element
-				err = copier(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
-				if err != nil {
-					continue
+				if !set(to.Index(i), from.Index(i), opt.DeepCopy, converters) {
+					// ignore error while copy slice element
+					err = copier(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
+					if err != nil {
+						continue
+					}
 				}
 			}
+			return
 		}
-		return
 	}
 
 	if fromType.Kind() != reflect.Struct || toType.Kind() != reflect.Struct {
