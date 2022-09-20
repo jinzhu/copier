@@ -263,7 +263,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					// process for nested anonymous field
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(destFieldName); ok {
-						for idx := range f.Index {
+						// only initialize parent embedded struct pointer in the path
+						for idx := range f.Index[:len(f.Index)-1] {
 							destField := dest.FieldByIndex(f.Index[:idx+1])
 
 							if destField.Kind() != reflect.Ptr {
