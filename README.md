@@ -2,7 +2,7 @@
 
   I am a copier, I copy everything from one to another
 
-[![test status](https://github.com/jinzhu/copier/workflows/tests/badge.svg?branch=master "test status")](https://github.com/jinzhu/copier/actions)
+[![test status](https://github.com/ekulabuhov/copier/workflows/tests/badge.svg?branch=master "test status")](https://github.com/ekulabuhov/copier/actions)
 
 ## Features
 
@@ -23,7 +23,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/jinzhu/copier"
+	"github.com/ekulabuhov/copier"
 )
 
 type User struct {
@@ -148,4 +148,4 @@ You can help to make the project better, check out [http://gorm.io/contribute.ht
 
 ## License
 
-Released under the [MIT License](https://github.com/jinzhu/copier/blob/master/License).
+Released under the [MIT License](https://github.com/ekulabuhov/copier/blob/master/License).
