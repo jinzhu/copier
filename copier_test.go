@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ekulabuhov/copier"
+	"github.com/stretchr/testify/assert"
 )
 
 type User struct {
@@ -1689,4 +1690,163 @@ func TestDefaultSourceFlags(t *testing.T) {
 	if err.Error() != expectedErr {
 		t.Errorf("Expected: %s\nActual: %s", expectedErr, err.Error())
 	}
+}
+
+func Test_SkipFieldIfNotInFrom(t *testing.T) {
+	type C struct {
+		D string
+	}
+
+	type D struct {
+		C string
+		D string
+	}
+
+	type A struct {
+		BS []C
+		X  string
+	}
+
+	type B struct {
+		BS []D
+		Y  string
+	}
+
+	t.Run("slice and property", func(t *testing.T) {
+		from := A{
+			BS: []C{
+				{},
+			},
+			X: "x",
+		}
+		to := B{
+			BS: []D{
+				{
+					D: "1",
+				},
+			},
+			Y: "y",
+		}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{SkipFieldIfNotInFrom: true})
+		assert.NoError(t, err)
+
+		// to.BS[0].D is deleted as it's present in type C
+		assert.Equal(t, B{
+			BS: []D{
+				{
+					C: "",
+					D: "",
+				},
+			},
+			Y: "y",
+		}, to)
+	})
+
+	t.Run("slice", func(t *testing.T) {
+		from := []C{
+			{
+				D: "2",
+			},
+		}
+
+		to := []D{
+			{
+				C: "3",
+				D: "1",
+			},
+		}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{DeepCopy: true, SkipFieldIfNotInFrom: true})
+		assert.NoError(t, err)
+
+		assert.Equal(t, []D{
+			{
+				C: "3",
+				D: "2",
+			},
+		}, to)
+	})
+
+	t.Run("simple struct", func(t *testing.T) {
+		from := C{
+			D: "2",
+		}
+
+		to := D{
+			C: "3",
+			D: "1",
+		}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{SkipFieldIfNotInFrom: true})
+		assert.NoError(t, err)
+
+		assert.Equal(t,
+			D{
+				C: "3",
+				D: "2",
+			},
+			to)
+	})
+}
+
+func Test_ToSliceResized(t *testing.T) {
+	type A struct {
+		A string
+	}
+
+	type B struct {
+		A string
+		B string
+	}
+
+	from := []A{
+		{
+			A: "1",
+		},
+	}
+
+	to := []B{
+		{
+			A: "2",
+		},
+		{
+			A: "3",
+		},
+	}
+
+	err := copier.Copy(&to, &from)
+	assert.NoError(t, err)
+
+	assert.Len(t, to, 1)
+}
+
+func Test_AssignableToSliceResized(t *testing.T) {
+	type A struct {
+		A string
+	}
+
+	type B struct {
+		A string
+	}
+
+	from := []A{
+		{
+			A: "1",
+		},
+	}
+
+	to := []B{
+		{
+			A: "2",
+		},
+		{
+			A: "3",
+		},
+	}
+
+	err := copier.Copy(&to, &from)
+	assert.NoError(t, err)
+
+	assert.Len(t, to, 1)
 }
