@@ -13,6 +13,13 @@ type EmployeeTags struct {
 	ID      int `copier:"-"`
 }
 
+type EmployeeTagsNoPanic struct {
+	Name    string `copier:"must,nopanic"`
+	DOB     string
+	Address string
+	ID      int `copier:"-"`
+}
+
 type User1 struct {
 	Name    string
 	DOB     string
@@ -47,6 +54,15 @@ func TestCopyTagMust(t *testing.T) {
 		}
 	}()
 	copier.Copy(employee, user)
+}
+
+func TestCopyTagMustNoPanic(t *testing.T) {
+	employee := &EmployeeTagsNoPanic{}
+	user := &User2{DOB: "1 January 1970"}
+	err := copier.Copy(employee, user)
+	if err == nil {
+		t.Error("expected error")
+	}
 }
 
 func TestCopyTagFieldName(t *testing.T) {

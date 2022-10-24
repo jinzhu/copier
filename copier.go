@@ -236,7 +236,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType)
+		var flgs flags
+		flgs, err = getFlags(dest, source, toType, fromType)
 		if err != nil {
 			return err
 		}
