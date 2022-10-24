@@ -1089,6 +1089,36 @@ func TestAnonymousFields(t *testing.T) {
 		}
 	})
 
+	t.Run("Should work with exported ptr fields with same name src field", func(t *testing.T) {
+		type Nested struct {
+			A string
+		}
+		type parentA struct {
+			A string
+		}
+		type parentB struct {
+			*Nested
+		}
+
+		fieldValue := "a"
+		from := parentA{A: fieldValue}
+		to := parentB{}
+
+		err := copier.CopyWithOption(&to, &from, copier.Option{
+			DeepCopy: true,
+		})
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+			return
+		}
+
+		from.A = "b"
+
+		if to.Nested.A != fieldValue {
+			t.Errorf("should not change")
+		}
+	})
+
 	t.Run("Should work with exported fields", func(t *testing.T) {
 		type Nested struct {
 			A string
@@ -1356,19 +1386,21 @@ func TestScanner(t *testing.T) {
 func TestScanFromPtrToSqlNullable(t *testing.T) {
 	var (
 		from struct {
-			S    string
-			Sptr *string
-			T1   sql.NullTime
-			T2   sql.NullTime
-			T3   *time.Time
+			S     string
+			Sptr  *string
+			Snull sql.NullString
+			T1    sql.NullTime
+			T2    sql.NullTime
+			T3    *time.Time
 		}
 
 		to struct {
-			S    sql.NullString
-			Sptr sql.NullString
-			T1   time.Time
-			T2   *time.Time
-			T3   sql.NullTime
+			S     sql.NullString
+			Sptr  sql.NullString
+			Snull *string
+			T1    time.Time
+			T2    *time.Time
+			T3    sql.NullTime
 		}
 
 		s string
@@ -1393,8 +1425,12 @@ func TestScanFromPtrToSqlNullable(t *testing.T) {
 		t.Errorf("to.T1 should be Zero but %v", to.T1)
 	}
 
-	if to.T2 != nil && !to.T2.IsZero() {
-		t.Errorf("to.T2 should be Zero but %v", to.T2)
+	if to.T2 != nil {
+		t.Errorf("to.T2 should be nil but %v", to.T2)
+	}
+
+	if to.Snull != nil {
+		t.Errorf("to.Snull should be nil but %v", to.Snull)
 	}
 
 	now := time.Now()
@@ -1664,6 +1700,36 @@ func TestSqlNullFiled(t *testing.T) {
 
 	if from.MkExpiryDateType.Int32 != to.MkExpiryDateType {
 		t.Errorf("to (%v) value should equal from (%v) value", to.MkExpiryDateType, from.MkExpiryDateType.Int32)
+	}
+}
+
+func TestEmptySlice(t *testing.T) {
+	type Str1 string
+	type Str2 string
+	type Input1 struct {
+		Val Str1
+	}
+	type Input2 struct {
+		Val Str2
+	}
+	to := []*Input1(nil)
+	from := []*Input2{}
+	err := copier.Copy(&to, &from)
+	if err != nil {
+		t.Error("should not error")
+	}
+	if from == nil {
+		t.Error("from should be empty slice not nil")
+	}
+
+	to = []*Input1(nil)
+	from = []*Input2(nil)
+	err = copier.Copy(&to, &from)
+	if err != nil {
+		t.Error("should not error")
+	}
+	if from != nil {
+		t.Error("from should be empty slice nil")
 	}
 }
 
