@@ -134,6 +134,36 @@ err := copier.CopyWithOption(&B, &A, copier.Option{
 fmt.Print(err)
 ```
 
+**Preserving fields on the merged-to structure**
+```go
+type C struct {
+	D string
+}
+
+type D struct {
+	C string
+	D string
+}
+
+from := C{
+	D: "2",
+}
+
+to := D{
+	C: "3",
+	D: "1",
+}
+
+err := copier.CopyWithOption(&to, &from, copier.Option{SkipFieldIfNotInFrom: true})
+
+/* output will copy D and preserve C:
+D{
+	C: "3",
+	D: "2",
+}
+*/
+```
+
 ## Contributing
 
 You can help to make the project better, check out [http://gorm.io/contribute.html](http://gorm.io/contribute.html) for things you can do.
