@@ -41,6 +41,10 @@ type Option struct {
 	DeepCopy           bool
 	Converters         []TypeConverter
 	DefaultSourceFlags uint8
+	// If the field is not present on the origin, we won't overwrite it
+	SkipFieldIfNotInFrom bool
+	// Private field. Used to check if fields exist in original structure.
+	originalFromTypeFields []reflect.StructField
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -139,6 +143,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// Copy maps
 	if from.Kind() != reflect.Slice && fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
 		if !fromType.Key().ConvertibleTo(toType.Key()) {
 			return ErrMapKeyNotMatch
@@ -177,12 +182,18 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// Checks if structs in the array have a 100% match on field names and types
 	if from.Kind() == reflect.Slice && to.Kind() == reflect.Slice {
 		if to.IsNil() {
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)
 		}
 		if fromType.ConvertibleTo(toType) {
+			// Resize to array, set len(to) = len(from)
+			if to.Len() > from.Len() {
+				to.SetLen(from.Len())
+			}
+
 			for i := 0; i < from.Len(); i++ {
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
@@ -205,13 +216,20 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// Copy arrays
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
 		isSlice = true
 		if from.Kind() == reflect.Slice {
 			amount = from.Len()
 		}
+
+		if to.Kind() == reflect.Slice && to.Len() > amount {
+			// Resize to array, set len(to) = len(from)
+			to.SetLen(amount)
+		}
 	}
 
+	// Go through each element of array
 	for i := 0; i < amount; i++ {
 		var dest, source reflect.Value
 
@@ -242,13 +260,29 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			return err
 		}
 
+		var fromTypeFields []reflect.StructField
+
 		// check source
 		if source.IsValid() {
 			copyUnexportedStructFields(dest, source)
 
 			// Copy from source field to dest field or method
-			fromTypeFields := deepFields(fromType)
+			fromTypeFields = deepFields(fromType)
 			for _, field := range fromTypeFields {
+				var originalFromField *reflect.StructField
+				if len(opt.originalFromTypeFields) > 0 {
+					for _, v := range opt.originalFromTypeFields {
+						if v.Name == field.Name {
+							originalFromField = &v
+							break
+						}
+					}
+					// If the field does not exist in original struct - do not overwrite it
+					if originalFromField == nil {
+						continue
+					}
+				}
+
 				name := field.Name
 
 				// Get bit flags for field
@@ -294,7 +328,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					if toField.IsValid() {
 						if toField.CanSet() {
 							if !set(toField, fromField, opt.DeepCopy, converters) {
-								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
+								newOpt := opt
+								if originalFromField != nil {
+									newOpt.originalFromTypeFields = deepFields(originalFromField.Type)
+								}
+								if err := copier(toField.Addr().Interface(), fromField.Interface(), newOpt); err != nil {
 									return err
 								}
 							}
@@ -360,6 +398,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					to.Set(reflect.Append(to, dest))
 				} else {
 					if !set(to.Index(i), dest, opt.DeepCopy, converters) {
+						if opt.SkipFieldIfNotInFrom {
+							opt.originalFromTypeFields = fromTypeFields
+						}
 						// ignore error while copy slice element
 						err = copier(to.Index(i).Addr().Interface(), dest.Interface(), opt)
 						if err != nil {
