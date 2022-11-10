@@ -1748,14 +1748,39 @@ func TestDefaultSourceFlags(t *testing.T) {
 		DefaultSourceFlags: copier.TagMust | copier.TagNoPanic,
 	})
 
-	if err == nil {
-		t.Error("expected an error")
+	assert.Error(t, err)
+	assert.Equal(t, "field MissingField has must tag but was not copied", err.Error())
+}
+
+func TestDefaultTargetFlags(t *testing.T) {
+	var A struct {
+		MappedField string
 	}
 
-	expectedErr := "field MissingField has must tag but was not copied"
-	if err.Error() != expectedErr {
-		t.Errorf("Expected: %s\nActual: %s", expectedErr, err.Error())
+	var B struct {
+		MappedField  string
+		MissingField string
 	}
+
+	err := copier.CopyWithOption(&B, &A, copier.Option{DefaultTargetFlags: copier.TagMust | copier.TagNoPanic})
+
+	assert.Error(t, err)
+	assert.Equal(t, "field MissingField has must tag but was not copied", err.Error())
+}
+
+func TestDefaultTargetFlagsSkipPtr(t *testing.T) {
+	var A struct {
+		MappedField string
+	}
+
+	var B struct {
+		MappedField  string
+		MissingField *string
+	}
+
+	err := copier.CopyWithOption(&B, &A, copier.Option{DefaultTargetFlags: copier.TagMust | copier.TagNoPanic | copier.TagSkipPtrs})
+
+	assert.NoError(t, err)
 }
 
 func Test_SkipFieldIfNotInFrom(t *testing.T) {

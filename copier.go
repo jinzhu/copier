@@ -19,6 +19,9 @@ const (
 	// value is not copied. The program will return an error instead.
 	TagNoPanic
 
+	// Won't apply default tags if value is a pointer
+	TagSkipPtrs
+
 	// Ignore a destination field from being copied to.
 	tagIgnore
 
@@ -41,6 +44,7 @@ type Option struct {
 	DeepCopy           bool
 	Converters         []TypeConverter
 	DefaultSourceFlags uint8
+	DefaultTargetFlags uint8
 	// If the field is not present on the origin, we won't overwrite it
 	SkipFieldIfNotInFrom bool
 	// Private field. Used to check if fields exist in original structure.
@@ -255,7 +259,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType, opt.DefaultSourceFlags)
+		flgs, err := getFlags(dest, source, toType, fromType, opt.DefaultSourceFlags, opt.DefaultTargetFlags)
 		if err != nil {
 			return err
 		}
@@ -641,7 +645,7 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 }
 
 // getTagFlags Parses struct tags for bit flags, field name.
-func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, defaultSourceFlags uint8) (flags, error) {
+func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, defaultSourceFlags, defaultTargetFlags uint8) (flags, error) {
 	flgs := flags{
 		BitFlags: map[string]uint8{},
 		SrcNames: tagNameMapping{
@@ -673,6 +677,12 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, defaultSou
 				flgs.DestNames.FieldNameToTag[field.Name] = name
 				flgs.DestNames.TagToFieldName[name] = field.Name
 			}
+		} else if defaultTargetFlags != 0 {
+			if defaultTargetFlags&TagSkipPtrs != 0 && field.Type.Kind() == reflect.Ptr {
+				continue
+			}
+
+			flgs.BitFlags[field.Name] = defaultTargetFlags
 		}
 	}
 
