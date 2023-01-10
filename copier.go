@@ -159,7 +159,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 		for _, k := range from.MapKeys() {
 			toKey := indirect(reflect.New(toType.Key()))
-			if !set(toKey, k, opt.DeepCopy, converters) {
+			isSet, err := set(toKey, k, opt.DeepCopy, converters)
+			if err != nil {
+				return err
+			}
+			if !isSet {
 				return fmt.Errorf("%w map, old key: %v, new key: %v", ErrNotSupported, k.Type(), toType.Key())
 			}
 
@@ -168,7 +172,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				elemType, _ = indirectType(elemType)
 			}
 			toValue := indirect(reflect.New(elemType))
-			if !set(toValue, from.MapIndex(k), opt.DeepCopy, converters) {
+			isSet, err = set(toValue, from.MapIndex(k), opt.DeepCopy, converters)
+			if err != nil {
+				return err
+			}
+			if !isSet {
 				if err = copier(toValue.Addr().Interface(), from.MapIndex(k).Interface(), opt); err != nil {
 					return err
 				}
@@ -202,8 +210,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
 				}
-
-				if !set(to.Index(i), from.Index(i), opt.DeepCopy, converters) {
+				isSet, err := set(to.Index(i), from.Index(i), opt.DeepCopy, converters)
+				if err != nil {
+					return err
+				}
+				if !isSet {
 					// ignore error while copy slice element
 					err = copier(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
 					if err != nil {
@@ -331,12 +342,15 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					toField := dest.FieldByName(destFieldName)
 					if toField.IsValid() {
 						if toField.CanSet() {
-							if !set(toField, fromField, opt.DeepCopy, converters) {
-								newOpt := opt
-								if originalFromField != nil {
+							isSet, err := set(toField, fromField, opt.DeepCopy, converters)
+							if err != nil {
+								return err
+							}
+							if !isSet {
+              	if originalFromField != nil {
 									newOpt.originalFromTypeFields = deepFields(originalFromField.Type)
 								}
-								if err := copier(toField.Addr().Interface(), fromField.Interface(), newOpt); err != nil {
+								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
 									return err
 								}
 							}
@@ -389,7 +403,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, dest.Addr()))
 				} else {
-					if !set(to.Index(i), dest.Addr(), opt.DeepCopy, converters) {
+					isSet, err := set(to.Index(i), dest.Addr(), opt.DeepCopy, converters)
+					if err != nil {
+						return err
+					}
+					if !isSet {
 						// ignore error while copy slice element
 						err = copier(to.Index(i).Addr().Interface(), dest.Addr().Interface(), opt)
 						if err != nil {
@@ -401,7 +419,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, dest))
 				} else {
-					if !set(to.Index(i), dest, opt.DeepCopy, converters) {
+					isSet, err := set(to.Index(i), dest, opt.DeepCopy, converters)
+					if err != nil {
+						return err
+					}
+					if !isSet {
 						if opt.SkipFieldIfNotInFrom {
 							opt.originalFromTypeFields = fromTypeFields
 						}
@@ -499,32 +521,32 @@ func indirectType(reflectType reflect.Type) (_ reflect.Type, isPtr bool) {
 	return reflectType, isPtr
 }
 
-func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]TypeConverter) bool {
+func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]TypeConverter) (bool, error) {
 	if !from.IsValid() {
-		return true
+		return true, nil
 	}
 	if ok, err := lookupAndCopyWithConverter(to, from, converters); err != nil {
-		return false
+		return false, err
 	} else if ok {
-		return true
+		return true, nil
 	}
 
 	if to.Kind() == reflect.Ptr {
 		// set `to` to nil if from is nil
 		if from.Kind() == reflect.Ptr && from.IsNil() {
 			to.Set(reflect.Zero(to.Type()))
-			return true
+			return true, nil
 		} else if to.IsNil() {
 			// `from`         -> `to`
 			// sql.NullString -> *string
 			if fromValuer, ok := driverValuer(from); ok {
 				v, err := fromValuer.Value()
 				if err != nil {
-					return false
+					return true, nil
 				}
 				// if `from` is not valid do nothing with `to`
 				if v == nil {
-					return true
+					return true, nil
 				}
 			}
 			// allocate new `to` variable with default value (eg. *string -> new(string))
@@ -543,10 +565,10 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 			}
 		}
 		if from.Kind() == reflect.Ptr && from.IsNil() {
-			return true
+			return true, nil
 		}
 		if toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice {
-			return false
+			return false, nil
 		}
 	}
 
@@ -558,7 +580,7 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		if from.Kind() == reflect.Ptr {
 			// if `from` is nil do nothing with `to`
 			if from.IsNil() {
-				return true
+				return true, nil
 			}
 			// depointer `from`
 			from = indirect(from)
@@ -568,18 +590,18 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		// set `to` by invoking method Scan(`from`)
 		err := toScanner.Scan(from.Interface())
 		if err != nil {
-			return false
+			return false, nil
 		}
 	} else if fromValuer, ok := driverValuer(from); ok {
 		// `from`         -> `to`
 		// sql.NullString -> string
 		v, err := fromValuer.Value()
 		if err != nil {
-			return false
+			return false, nil
 		}
 		// if `from` is not valid do nothing with `to`
 		if v == nil {
-			return true
+			return true, nil
 		}
 		rv := reflect.ValueOf(v)
 		if rv.Type().AssignableTo(to.Type()) {
@@ -590,10 +612,10 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 	} else if from.Kind() == reflect.Ptr {
 		return set(to, from.Elem(), deepCopy, converters)
 	} else {
-		return false
+		return false, nil
 	}
 
-	return true
+	return true, nil
 }
 
 // lookupAndCopyWithConverter looks up the type pair, on success the TypeConverter Fn func is called to copy src to dst field.

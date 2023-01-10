@@ -182,3 +182,39 @@ func TestCopyWithConverterStrToStrPointer(t *testing.T) {
 		t.Fatalf("got %q, wanted nil", *dst.Field1)
 	}
 }
+
+func TestCopyWithConverterRaisingError(t *testing.T) {
+	type SrcStruct struct {
+		Field1 string
+	}
+
+	type DestStruct struct {
+		Field1 *string
+	}
+
+	src := SrcStruct{
+		Field1: "",
+	}
+
+	var dst DestStruct
+
+	ptrStrType := ""
+
+	err := copier.CopyWithOption(&dst, &src, copier.Option{
+		IgnoreEmpty: false,
+		DeepCopy:    true,
+		Converters: []copier.TypeConverter{
+			{
+				SrcType: copier.String,
+				DstType: &ptrStrType,
+				Fn: func(src interface{}) (interface{}, error) {
+					return nil, errors.New("src type not matching")
+				},
+			},
+		},
+	})
+	if err == nil {
+		t.Fatalf(`Should be raising an error.`)
+		return
+	}
+}
