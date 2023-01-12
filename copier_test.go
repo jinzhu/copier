@@ -1732,3 +1732,33 @@ func TestEmptySlice(t *testing.T) {
 		t.Error("from should be empty slice nil")
 	}
 }
+
+func TestNestedNilPointerStruct(t *testing.T) {
+	type destination struct {
+		Title string
+	}
+
+	type NestedSource struct {
+		ID int
+	}
+
+	type source struct {
+		Title string
+		*NestedSource
+	}
+
+	from := &source{
+		Title: "A title to be copied",
+	}
+
+	to := destination{}
+
+	err := copier.Copy(&to, from)
+	if err != nil {
+		t.Error("should not error")
+	}
+
+	if from.Title != to.Title {
+		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
+	}
+}

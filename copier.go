@@ -270,7 +270,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				}
 
 				srcFieldName, destFieldName := getFieldName(name, flgs)
-				if fromField := source.FieldByName(srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
+				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(destFieldName); ok {
@@ -398,6 +398,16 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	return
+}
+
+func fieldByNameOrZeroValue(source reflect.Value, fieldName string) (value reflect.Value) {
+	defer func() {
+		if err := recover(); err != nil {
+			value = reflect.Value{}
+		}
+	}()
+
+	return source.FieldByName(fieldName)
 }
 
 func copyUnexportedStructFields(to, from reflect.Value) {
