@@ -2,9 +2,10 @@ package copier_test
 
 import (
 	"database/sql"
-	"github.com/jinzhu/copier"
 	"testing"
 	"time"
+
+	"github.com/jinzhu/copier"
 )
 
 type TypeStruct1 struct {
