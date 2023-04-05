@@ -529,7 +529,7 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		if from.Kind() == reflect.Ptr && from.IsNil() {
 			return true, nil
 		}
-		if toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice {
+		if _, ok := to.Addr().Interface().(sql.Scanner); !ok && (toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice) {
 			return false, nil
 		}
 	}
