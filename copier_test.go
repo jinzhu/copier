@@ -30,7 +30,7 @@ type Employee struct {
 	_User     *User
 	Name      string
 	Birthday  *time.Time
-	Nickname  *string
+	NickName  *string
 	Age       int64
 	FakeAge   int
 	EmployeID int64
@@ -48,7 +48,7 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	if employee.Name != user.Name {
 		t.Errorf("%v: Name haven't been copied correctly.", testCase)
 	}
-	if employee.Nickname == nil || *employee.Nickname != user.Nickname {
+	if employee.NickName == nil || *employee.NickName != user.Nickname {
 		t.Errorf("%v: NickName haven't been copied correctly.", testCase)
 	}
 	if employee.Birthday == nil && user.Birthday != nil {
@@ -102,7 +102,7 @@ func TestCopySameStructWithPointerField(t *testing.T) {
 
 func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string) {
 	if user == nil {
-		if employee.Name != "" || employee.Nickname != nil || employee.Birthday != nil || employee.Age != 0 ||
+		if employee.Name != "" || employee.NickName != nil || employee.Birthday != nil || employee.Age != 0 ||
 			employee.DoubleAge != 0 || employee.FakeAge != 0 || employee.SuperRule != "" || employee.Notes != nil {
 			t.Errorf("%v : employee should be empty", testCase)
 		}
