@@ -1,7 +1,9 @@
 package copier_test
 
 import (
+	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/jinzhu/copier"
 )
@@ -45,6 +47,28 @@ type TypeStruct4 struct {
 
 func (t *TypeStruct4) Field1(i int) {
 	t.field1 = i
+}
+
+type TypeBaseStruct5 struct {
+	A bool
+	B byte
+	C float64
+	D int16
+	E int32
+	F int64
+	G time.Time
+	H string
+}
+
+type TypeSqlNullStruct6 struct {
+	A sql.NullBool    `json:"a"`
+	B sql.NullByte    `json:"b"`
+	C sql.NullFloat64 `json:"c"`
+	D sql.NullInt16   `json:"d"`
+	E sql.NullInt32   `json:"e"`
+	F sql.NullInt64   `json:"f"`
+	G sql.NullTime    `json:"g"`
+	H sql.NullString  `json:"h"`
 }
 
 func TestCopyDifferentFieldType(t *testing.T) {
@@ -148,5 +172,51 @@ func TestAssignableType(t *testing.T) {
 func checkType2WithType4(t2 TypeStruct2, t4 TypeStruct4, t *testing.T, testCase string) {
 	if t2.Field1 != t4.field1 || t2.Field2 != t4.Field2 {
 		t.Errorf("%v: type struct 4 and type struct 2 is not equal", testCase)
+	}
+}
+
+func TestCopyFromBaseToSqlNullWithOptionDeepCopy(t *testing.T) {
+	a := TypeBaseStruct5{
+		A: true,
+		B: byte(2),
+		C: 5.5,
+		D: 1,
+		E: 2,
+		F: 3,
+		G: time.Now(),
+		H: "deep",
+	}
+	b := TypeSqlNullStruct6{}
+
+	err := copier.CopyWithOption(&b, a, copier.Option{DeepCopy: true})
+	// 检查是否有错误
+	if err != nil {
+		t.Errorf("CopyStructWithOption() error = %v", err)
+		return
+	}
+	// 检查 b 结构体的字段是否符合预期
+	if !b.A.Valid || b.A.Bool != true {
+		t.Errorf("b.A = %v, want %v", b.A, true)
+	}
+	if !b.B.Valid || b.B.Byte != byte(2) {
+		t.Errorf("b.B = %v, want %v", b.B, byte(2))
+	}
+	if !b.C.Valid || b.C.Float64 != 5.5 {
+		t.Errorf("b.C = %v, want %v", b.C, 5.5)
+	}
+	if !b.D.Valid || b.D.Int16 != 1 {
+		t.Errorf("b.D = %v, want %v", b.D, 1)
+	}
+	if !b.E.Valid || b.E.Int32 != 2 {
+		t.Errorf("b.E = %v, want %v", b.E, 2)
+	}
+	if !b.F.Valid || b.F.Int64 != 3 {
+		t.Errorf("b.F = %v, want %v", b.F, 3)
+	}
+	if !b.G.Valid || b.G.Time != a.G {
+		t.Errorf("b.G = %v, want %v", b.G, a.G)
+	}
+	if !b.H.Valid || b.H.String != "deep" {
+		t.Errorf("b.H = %v, want %v", b.H, "deep")
 	}
 }
