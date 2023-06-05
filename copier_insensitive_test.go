@@ -11,10 +11,10 @@ import (
 	"github.com/jinzhu/copier"
 )
 
-type User struct {
+type UserInsensitive struct {
 	Name     string
 	Birthday *time.Time
-	Nickname string
+	NickName string
 	Role     string
 	Age      int32
 	FakeAge  *int32
@@ -22,15 +22,15 @@ type User struct {
 	flags    []byte
 }
 
-func (user User) DoubleAge() int32 {
+func (user UserInsensitive) DoubleAge() int32 {
 	return 2 * user.Age
 }
 
-type Employee struct {
+type EmployeeInsensitive struct {
 	_User     *User
 	Name      string
 	Birthday  *time.Time
-	Nickname  *string
+	NickName  *string
 	Age       int64
 	FakeAge   int
 	EmployeID int64
@@ -40,11 +40,11 @@ type Employee struct {
 	flags     []byte
 }
 
-func (employee *Employee) Role(role string) {
+func (employee *EmployeeInsensitive) Role(role string) {
 	employee.SuperRule = "Super " + role
 }
 
-func checkEmployee(employee Employee, user User, t *testing.T, testCase string) {
+func checkEmployeeInsensitive(employee Employee, user User, t *testing.T, testCase string) {
 	t.Helper()
 	if employee.Name != user.Name {
 		t.Errorf("%v: Name haven't been copied correctly.", testCase)
@@ -86,12 +86,15 @@ func checkEmployee(employee Employee, user User, t *testing.T, testCase string) 
 	}
 }
 
-func TestCopySameStructWithPointerField(t *testing.T) {
+func TestCopySameStructWithPointerFieldInsensitive(t *testing.T) {
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
+	}
 	var fakeAge int32 = 12
 	var currentTime time.Time = time.Now()
 	user := &User{Birthday: &currentTime, Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
 	newUser := &User{}
-	copier.Copy(newUser, user)
+	copier.CopyWithOption(newUser, user, optionsInsensitive)
 	if user.Birthday == newUser.Birthday {
 		t.Errorf("TestCopySameStructWithPointerField: copy Birthday failed since they need to have different address")
 	}
@@ -101,7 +104,7 @@ func TestCopySameStructWithPointerField(t *testing.T) {
 	}
 }
 
-func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string) {
+func checkEmployee2Insensitive(employee Employee, user *User, t *testing.T, testCase string) {
 	t.Helper()
 	if user == nil {
 		if employee.Name != "" || employee.Nickname != nil || employee.Birthday != nil || employee.Age != 0 ||
@@ -111,118 +114,130 @@ func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string
 		return
 	}
 
-	checkEmployee(employee, *user, t, testCase)
+	checkEmployeeInsensitive(employee, *user, t, testCase)
 }
 
-func TestCopyStruct(t *testing.T) {
+func TestCopyStructInsensitive(t *testing.T) {
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
+	}
 	var fakeAge int32 = 12
 	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
 	employee := Employee{}
 
-	if err := copier.Copy(employee, &user); err == nil {
+	if err := copier.CopyWithOption(employee, &user, optionsInsensitive); err == nil {
 		t.Errorf("Copy to unaddressable value should get error")
 	}
 
-	copier.Copy(&employee, &user)
-	checkEmployee(employee, user, t, "Copy From Ptr To Ptr")
+	copier.CopyWithOption(&employee, &user, optionsInsensitive)
+	checkEmployeeInsensitive(employee, user, t, "Copy From Ptr To Ptr")
 
 	employee2 := Employee{}
-	copier.Copy(&employee2, user)
-	checkEmployee(employee2, user, t, "Copy From Struct To Ptr")
+	copier.CopyWithOption(&employee2, user, optionsInsensitive)
+	checkEmployeeInsensitive(employee2, user, t, "Copy From Struct To Ptr")
 
 	employee3 := Employee{}
 	ptrToUser := &user
-	copier.Copy(&employee3, &ptrToUser)
-	checkEmployee(employee3, user, t, "Copy From Double Ptr To Ptr")
+	copier.CopyWithOption(&employee3, &ptrToUser, optionsInsensitive)
+	checkEmployeeInsensitive(employee3, user, t, "Copy From Double Ptr To Ptr")
 
 	employee4 := &Employee{}
-	copier.Copy(&employee4, user)
-	checkEmployee(*employee4, user, t, "Copy From Ptr To Double Ptr")
+	copier.CopyWithOption(&employee4, user, optionsInsensitive)
+	checkEmployeeInsensitive(*employee4, user, t, "Copy From Ptr To Double Ptr")
 
 	employee5 := &Employee{}
-	copier.Copy(&employee5, &employee)
-	checkEmployee(*employee5, user, t, "Copy From Employee To Employee")
+	copier.CopyWithOption(&employee5, &employee, optionsInsensitive)
+	checkEmployeeInsensitive(*employee5, user, t, "Copy From Employee To Employee")
 }
 
-func TestCopyFromStructToSlice(t *testing.T) {
+func TestCopyFromStructToSliceInsensitive(t *testing.T) {
 	user := User{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}
 	employees := []Employee{}
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
+	}
 
-	if err := copier.Copy(employees, &user); err != nil && len(employees) != 0 {
+	if err := copier.CopyWithOption(employees, &user, optionsInsensitive); err != nil && len(employees) != 0 {
 		t.Errorf("Copy to unaddressable value should get error")
 	}
 
-	if copier.Copy(&employees, &user); len(employees) != 1 {
+	if copier.CopyWithOption(&employees, &user, optionsInsensitive); len(employees) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
-		checkEmployee(employees[0], user, t, "Copy From Struct To Slice Ptr")
+		checkEmployeeInsensitive(employees[0], user, t, "Copy From Struct To Slice Ptr")
 	}
 
 	employees2 := &[]Employee{}
-	if copier.Copy(&employees2, user); len(*employees2) != 1 {
+	if copier.CopyWithOption(&employees2, user, optionsInsensitive); len(*employees2) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
-		checkEmployee((*employees2)[0], user, t, "Copy From Struct To Double Slice Ptr")
+		checkEmployeeInsensitive((*employees2)[0], user, t, "Copy From Struct To Double Slice Ptr")
 	}
 
 	employees3 := []*Employee{}
-	if copier.Copy(&employees3, user); len(employees3) != 1 {
+	if copier.CopyWithOption(&employees3, user, optionsInsensitive); len(employees3) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
-		checkEmployee(*(employees3[0]), user, t, "Copy From Struct To Ptr Slice Ptr")
+		checkEmployeeInsensitive(*(employees3[0]), user, t, "Copy From Struct To Ptr Slice Ptr")
 	}
 
 	employees4 := &[]*Employee{}
-	if copier.Copy(&employees4, user); len(*employees4) != 1 {
+	if copier.CopyWithOption(&employees4, user, optionsInsensitive); len(*employees4) != 1 {
 		t.Errorf("Should only have one elem when copy struct to slice")
 	} else {
-		checkEmployee(*((*employees4)[0]), user, t, "Copy From Struct To Double Ptr Slice Ptr")
+		checkEmployeeInsensitive(*((*employees4)[0]), user, t, "Copy From Struct To Double Ptr Slice Ptr")
 	}
 }
 
-func TestCopyFromSliceToSlice(t *testing.T) {
+func TestCopyFromSliceToSliceInsensitive(t *testing.T) {
 	users := []User{
 		{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}},
 		{Name: "Jinzhu2", Age: 22, Role: "Dev", Notes: []string{"hello world", "hello"}}}
 	employees := []Employee{}
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
+	}
 
-	if copier.Copy(&employees, users); len(employees) != 2 {
+	if copier.CopyWithOption(&employees, users, optionsInsensitive); len(employees) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
-		checkEmployee(employees[0], users[0], t, "Copy From Slice To Slice Ptr @ 1")
-		checkEmployee(employees[1], users[1], t, "Copy From Slice To Slice Ptr @ 2")
+		checkEmployeeInsensitive(employees[0], users[0], t, "Copy From Slice To Slice Ptr @ 1")
+		checkEmployeeInsensitive(employees[1], users[1], t, "Copy From Slice To Slice Ptr @ 2")
 	}
 
 	employees2 := &[]Employee{}
-	if copier.Copy(&employees2, &users); len(*employees2) != 2 {
+	if copier.CopyWithOption(&employees2, &users, optionsInsensitive); len(*employees2) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
-		checkEmployee((*employees2)[0], users[0], t, "Copy From Slice Ptr To Double Slice Ptr @ 1")
-		checkEmployee((*employees2)[1], users[1], t, "Copy From Slice Ptr To Double Slice Ptr @ 2")
+		checkEmployeeInsensitive((*employees2)[0], users[0], t, "Copy From Slice Ptr To Double Slice Ptr @ 1")
+		checkEmployeeInsensitive((*employees2)[1], users[1], t, "Copy From Slice Ptr To Double Slice Ptr @ 2")
 	}
 
 	employees3 := []*Employee{}
-	if copier.Copy(&employees3, users); len(employees3) != 2 {
+	if copier.CopyWithOption(&employees3, users, optionsInsensitive); len(employees3) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
-		checkEmployee(*(employees3[0]), users[0], t, "Copy From Slice To Ptr Slice Ptr @ 1")
-		checkEmployee(*(employees3[1]), users[1], t, "Copy From Slice To Ptr Slice Ptr @ 2")
+		checkEmployeeInsensitive(*(employees3[0]), users[0], t, "Copy From Slice To Ptr Slice Ptr @ 1")
+		checkEmployeeInsensitive(*(employees3[1]), users[1], t, "Copy From Slice To Ptr Slice Ptr @ 2")
 	}
 
 	employees4 := &[]*Employee{}
-	if copier.Copy(&employees4, users); len(*employees4) != 2 {
+	if copier.CopyWithOption(&employees4, users, optionsInsensitive); len(*employees4) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
-		checkEmployee(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")
-		checkEmployee(*((*employees4)[1]), users[1], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 2")
+		checkEmployeeInsensitive(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")
+		checkEmployeeInsensitive(*((*employees4)[1]), users[1], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 2")
 	}
 }
 
-func TestCopyFromSliceToSlice2(t *testing.T) {
+func TestCopyFromSliceToSlice2Insensitive(t *testing.T) {
 	users := []*User{{Name: "Jinzhu", Age: 18, Role: "Admin", Notes: []string{"hello world"}}, nil}
 	employees := []Employee{}
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
+	}
 
-	if copier.Copy(&employees, users); len(employees) != 2 {
+	if copier.CopyWithOption(&employees, users, optionsInsensitive); len(employees) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2(employees[0], users[0], t, "Copy From Slice To Slice Ptr @ 1")
@@ -230,7 +245,7 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 
 	employees2 := &[]Employee{}
-	if copier.Copy(&employees2, &users); len(*employees2) != 2 {
+	if copier.CopyWithOption(&employees2, &users, optionsInsensitive); len(*employees2) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2((*employees2)[0], users[0], t, "Copy From Slice Ptr To Double Slice Ptr @ 1")
@@ -238,7 +253,7 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 
 	employees3 := []*Employee{}
-	if copier.Copy(&employees3, users); len(employees3) != 2 {
+	if copier.CopyWithOption(&employees3, users, optionsInsensitive); len(employees3) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2(*(employees3[0]), users[0], t, "Copy From Slice To Ptr Slice Ptr @ 1")
@@ -246,7 +261,7 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 
 	employees4 := &[]*Employee{}
-	if copier.Copy(&employees4, users); len(*employees4) != 2 {
+	if copier.CopyWithOption(&employees4, users, optionsInsensitive); len(*employees4) != 2 {
 		t.Errorf("Should have two elems when copy slice to slice")
 	} else {
 		checkEmployee2(*((*employees4)[0]), users[0], t, "Copy From Slice Ptr To Double Ptr Slice Ptr @ 1")
@@ -254,10 +269,14 @@ func TestCopyFromSliceToSlice2(t *testing.T) {
 	}
 }
 
-func TestCopyFromSliceToSlice3(t *testing.T) {
+func TestCopyFromSliceToSlice3Insensitive(t *testing.T) {
 	type CollectionAlias struct {
 		CollectionName string `json:"collection_name"`
 		Name           string `json:"name"`
+	}
+
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
 	}
 
 	expectedResult := []*CollectionAlias{
@@ -267,7 +286,7 @@ func TestCopyFromSliceToSlice3(t *testing.T) {
 	}
 
 	mockedResult := []*CollectionAlias{}
-	copier.Copy(&mockedResult, &expectedResult)
+	copier.CopyWithOption(&mockedResult, &expectedResult, optionsInsensitive)
 
 	if len(mockedResult) != len(expectedResult) {
 		t.Fatalf("failed to copy results")
@@ -280,7 +299,7 @@ func TestCopyFromSliceToSlice3(t *testing.T) {
 	}
 }
 
-func TestEmbeddedAndBase(t *testing.T) {
+func TestEmbeddedAndBaseInsensitive(t *testing.T) {
 	type Base struct {
 		BaseField1 int
 		BaseField2 int
@@ -291,6 +310,10 @@ func TestEmbeddedAndBase(t *testing.T) {
 		EmbedField1 int
 		EmbedField2 int
 		Base
+	}
+
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
 	}
 
 	base := Base{}
@@ -305,7 +328,7 @@ func TestEmbeddedAndBase(t *testing.T) {
 	}
 	embedded.User = &user
 
-	copier.Copy(&base, &embedded)
+	copier.CopyWithOption(&base, &embedded, optionsInsensitive)
 
 	if base.BaseField1 != 1 || base.User.Name != "testName" {
 		t.Error("Embedded fields not copied")
@@ -318,13 +341,13 @@ func TestEmbeddedAndBase(t *testing.T) {
 	}
 	base.User = &user1
 
-	copier.Copy(&embedded, &base)
+	copier.CopyWithOption(&embedded, &base, optionsInsensitive)
 	if embedded.BaseField1 != 11 || embedded.User.Name != "testName1" {
 		t.Error("base fields not copied")
 	}
 }
 
-func TestStructField(t *testing.T) {
+func TestStructFieldInsensitive(t *testing.T) {
 	type Detail struct {
 		Info1 string
 		Info2 *string
@@ -366,8 +389,13 @@ func TestStructField(t *testing.T) {
 		Detail *SimilarDetail
 	}
 
-	optionsDeepCopy := copier.Option{
-		DeepCopy: true,
+	optionsInsensitive := copier.Option{
+		CaseInsensitive: true,
+	}
+
+	optionsInsensitiveDeepCopy := copier.Option{
+		CaseInsensitive: true,
+		DeepCopy:        true,
 	}
 
 	checkDetail := func(t *testing.T, source Detail, target Detail) {
@@ -388,7 +416,7 @@ func TestStructField(t *testing.T) {
 				Details: []*Detail{{Info1: "hello", Info2: &info2}},
 			}
 			to := UserWithDetailsPtr{}
-			copier.Copy(&to, from)
+			copier.CopyWithOption(&to, from, optionsInsensitive)
 
 			checkDetail(t, *from.Detail, *to.Detail)
 
@@ -413,7 +441,7 @@ func TestStructField(t *testing.T) {
 				Details: []Detail{{Info1: "hello", Info2: &info2}},
 			}
 			to := UserWithDetails{}
-			copier.Copy(&to, from)
+			copier.CopyWithOption(&to, from, optionsInsensitive)
 
 			checkDetail(t, from.Detail, to.Detail)
 
@@ -435,7 +463,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetailsPtr{Detail: &Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetailsPtr{}
-			copier.Copy(&to, from)
+			copier.CopyWithOption(&to, from, optionsInsensitive)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -455,7 +483,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetails{Detail: Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetails{}
-			copier.Copy(&to, from)
+			copier.CopyWithOption(&to, from, optionsInsensitive)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -475,7 +503,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetailsPtr{Detail: &Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetails{}
-			copier.Copy(&to, from)
+			copier.CopyWithOption(&to, from, optionsInsensitive)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -495,7 +523,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetails{Detail: Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetailsPtr{}
-			copier.Copy(&to, from)
+			copier.CopyWithOption(&to, from, optionsInsensitive)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -515,7 +543,7 @@ func TestStructField(t *testing.T) {
 			notes := []string{"hello", "world"}
 			from := UserWithDetailsPtr{Notes: &notes, Notes2: nil}
 			to := UserWithDetails{}
-			err := copier.Copy(&to, from)
+			err := copier.CopyWithOption(&to, from, optionsInsensitive)
 			if err != nil {
 				t.Errorf("should not return an error")
 				return
@@ -541,7 +569,7 @@ func TestStructField(t *testing.T) {
 				Details: []*Detail{{Info1: "hello", Info2: &info2}},
 			}
 			to := UserWithDetailsPtr{}
-			copier.CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsInsensitiveDeepCopy)
 
 			checkDetail(t, *from.Detail, *to.Detail)
 
@@ -565,7 +593,7 @@ func TestStructField(t *testing.T) {
 				Details: []Detail{{Info1: "hello", Info2: &info2}},
 			}
 			to := UserWithDetails{}
-			copier.CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsInsensitiveDeepCopy)
 
 			checkDetail(t, from.Detail, to.Detail)
 
@@ -587,7 +615,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetailsPtr{Detail: &Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetailsPtr{}
-			copier.CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsInsensitiveDeepCopy)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -607,7 +635,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetails{Detail: Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetails{}
-			copier.CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsInsensitiveDeepCopy)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -627,7 +655,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetailsPtr{Detail: &Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetails{}
-			copier.CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsInsensitiveDeepCopy)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -647,7 +675,7 @@ func TestStructField(t *testing.T) {
 			info2 := "world"
 			from := UserWithDetails{Detail: Detail{Info1: "hello", Info2: &info2}}
 			to := EmployeeWithDetailsPtr{}
-			copier.CopyWithOption(&to, from, optionsDeepCopy)
+			copier.CopyWithOption(&to, from, optionsInsensitiveDeepCopy)
 
 			newValue := "new value"
 			to.Detail.Info2 = &newValue
@@ -667,7 +695,7 @@ func TestStructField(t *testing.T) {
 			notes := []string{"hello", "world"}
 			from := UserWithDetailsPtr{Notes: &notes, Notes2: nil}
 			to := UserWithDetails{}
-			err := copier.CopyWithOption(&to, from, optionsDeepCopy)
+			err := copier.CopyWithOption(&to, from, optionsInsensitiveDeepCopy)
 			if err != nil {
 				t.Errorf("should not return an error")
 				return
@@ -696,7 +724,7 @@ func TestStructField(t *testing.T) {
 	})
 }
 
-func TestMapInterface(t *testing.T) {
+func TestMapInterfaceInsensitive(t *testing.T) {
 	type Inner struct {
 		IntPtr          *int
 		unexportedField string
@@ -709,6 +737,8 @@ func TestMapInterface(t *testing.T) {
 	type DriverOptions struct {
 		GenOptions map[string]interface{}
 	}
+
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 
 	t.Run("Should work without deepCopy", func(t *testing.T) {
 		intVal := 5
@@ -724,7 +754,7 @@ func TestMapInterface(t *testing.T) {
 			},
 		}
 		to := DriverOptions{}
-		if err := copier.Copy(&to, &from); nil != err {
+		if err := copier.CopyWithOption(&to, &from, optionsInsensitive); nil != err {
 			t.Errorf("Unexpected error: %v", err)
 			return
 		}
@@ -812,7 +842,7 @@ func TestMapInterface(t *testing.T) {
 	})
 }
 
-func TestInterface(t *testing.T) {
+func TestInterfaceInsensitive(t *testing.T) {
 	type Inner struct {
 		IntPtr *int
 	}
@@ -825,6 +855,8 @@ func TestInterface(t *testing.T) {
 		GenOptions interface{}
 	}
 
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
+
 	t.Run("Should work without deepCopy", func(t *testing.T) {
 		intVal := 5
 		outer := Outer{
@@ -836,7 +868,7 @@ func TestInterface(t *testing.T) {
 			GenOptions: outer,
 		}
 		to := DriverOptions{}
-		if err := copier.Copy(&to, from); nil != err {
+		if err := copier.CopyWithOption(&to, from, optionsInsensitive); nil != err {
 			t.Errorf("Unexpected error: %v", err)
 			return
 		}
@@ -874,7 +906,7 @@ func TestInterface(t *testing.T) {
 	})
 }
 
-func TestSlice(t *testing.T) {
+func TestSliceInsensitive(t *testing.T) {
 	type ElemOption struct {
 		Value int
 	}
@@ -889,11 +921,13 @@ func TestSlice(t *testing.T) {
 		Options []ElemOption
 	}
 
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
+
 	t.Run("Should work with simple slice", func(t *testing.T) {
 		from := []int{1, 2}
 		var to []int
 
-		if err := copier.Copy(&to, from); nil != err {
+		if err := copier.CopyWithOption(&to, from, optionsInsensitive); nil != err {
 			t.Errorf("Unexpected error: %v", err)
 			return
 		}
@@ -914,7 +948,7 @@ func TestSlice(t *testing.T) {
 		from := []int{}
 		to := []int{}
 
-		if err := copier.Copy(&to, from); nil != err {
+		if err := copier.CopyWithOption(&to, from, optionsInsensitive); nil != err {
 			t.Errorf("Unexpected error: %v", err)
 			return
 		}
@@ -933,7 +967,7 @@ func TestSlice(t *testing.T) {
 		from := A{X: x, Options: options}
 		to := B{}
 
-		if err := copier.Copy(&to, from); nil != err {
+		if err := copier.CopyWithOption(&to, from, optionsInsensitive); nil != err {
 			t.Errorf("Unexpected error: %v", err)
 			return
 		}
@@ -1003,7 +1037,7 @@ func TestSlice(t *testing.T) {
 	})
 }
 
-func TestAnonymousFields(t *testing.T) {
+func TestAnonymousFieldsInsensitive(t *testing.T) {
 	t.Run("Should work with unexported ptr fields", func(t *testing.T) {
 		type nested struct {
 			A string
@@ -1152,31 +1186,32 @@ func TestAnonymousFields(t *testing.T) {
 	})
 }
 
-type someStruct struct {
+type someStructInsensitive struct {
 	IntField  int
 	UIntField uint64
 }
 
-type structSameName1 struct {
+type structSameName1Insensitive struct {
 	A string
 	B int64
 	C time.Time
 	D string
-	E *someStruct
+	E *someStructInsensitive
 }
 
-type structSameName2 struct {
+type structSameName2Insensitive struct {
 	A string
 	B time.Time
 	C int64
 	D string
-	E *someStruct
+	E *someStructInsensitive
 }
 
-func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
-	obj1 := structSameName1{A: "123", B: 2, C: time.Now()}
-	obj2 := &structSameName2{}
-	err := copier.Copy(obj2, &obj1)
+func TestCopyFieldsWithSameNameButDifferentTypesInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
+	obj1 := structSameName1Insensitive{A: "123", B: 2, C: time.Now()}
+	obj2 := &structSameName2Insensitive{}
+	err := copier.CopyWithOption(obj2, &obj1, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1186,27 +1221,28 @@ func TestCopyFieldsWithSameNameButDifferentTypes(t *testing.T) {
 	}
 }
 
-type Foo1 struct {
+type Foo1Insensitive struct {
 	Name string
 	Age  int32
 }
 
-type Foo2 struct {
+type Foo2Insensitive struct {
 	Name string
 }
 
-type StructWithMap1 struct {
-	Map map[int]Foo1
+type StructWithMap1Insensitive struct {
+	Map map[int]Foo1Insensitive
 }
 
-type StructWithMap2 struct {
-	Map map[int32]Foo2
+type StructWithMap2Insensitive struct {
+	Map map[int32]Foo2Insensitive
 }
 
-func TestCopyMapOfStruct(t *testing.T) {
-	obj1 := StructWithMap1{Map: map[int]Foo1{2: {Name: "A pure foo"}}}
-	obj2 := &StructWithMap2{}
-	err := copier.Copy(obj2, obj1)
+func TestCopyMapOfStructInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
+	obj1 := StructWithMap1Insensitive{Map: map[int]Foo1Insensitive{2: {Name: "A pure foo"}}}
+	obj2 := &StructWithMap2Insensitive{}
+	err := copier.CopyWithOption(obj2, obj1, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1218,10 +1254,11 @@ func TestCopyMapOfStruct(t *testing.T) {
 	}
 }
 
-func TestCopyMapOfInt(t *testing.T) {
+func TestCopyMapOfIntInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	map1 := map[int]int{3: 6, 4: 8}
 	map2 := map[int32]int8{}
-	err := copier.Copy(&map2, map1)
+	err := copier.CopyWithOption(&map2, map1, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1234,18 +1271,19 @@ func TestCopyMapOfInt(t *testing.T) {
 	}
 }
 
-func TestCopyMapOfSliceValue(t *testing.T) {
+func TestCopyMapOfSliceValueInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	// case1: map's value is a simple slice
 	key, value := 2, 3
 	src := map[int][]int{key: {value}}
 
 	dst1 := map[int][]int{}
 	var dst2 map[int][]int
-	err := copier.Copy(&dst1, src)
+	err := copier.CopyWithOption(&dst1, src, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
-	err = copier.Copy(&dst2, src)
+	err = copier.CopyWithOption(&dst2, src, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1308,17 +1346,18 @@ func TestCopyMapOfSliceValue(t *testing.T) {
 	}
 }
 
-func TestCopyMapOfPtrValue(t *testing.T) {
+func TestCopyMapOfPtrValueInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	intV := 3
 	intv := intV
 	src := map[int]*int{2: &intv}
 	dst1 := map[int]*int{}
 	var dst2 map[int]*int
-	err := copier.Copy(&dst1, src)
+	err := copier.CopyWithOption(&dst1, src, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
-	err = copier.Copy(&dst2, src)
+	err = copier.CopyWithOption(&dst2, src, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1336,9 +1375,9 @@ func TestCopyMapOfPtrValue(t *testing.T) {
 	}
 }
 
-func TestCopyWithOption(t *testing.T) {
-	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
-	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}
+func TestCopyWithOptionInsensitive(t *testing.T) {
+	from := structSameName2Insensitive{D: "456", E: &someStructInsensitive{IntField: 100, UIntField: 1000}}
+	to := &structSameName1Insensitive{A: "123", B: 2, C: time.Now(), D: "123", E: &someStructInsensitive{UIntField: 5000}}
 	if err := copier.CopyWithOption(to, &from, copier.Option{IgnoreEmpty: true}); err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1350,32 +1389,33 @@ func TestCopyWithOption(t *testing.T) {
 	}
 }
 
-type ScannerValue struct {
+type ScannerValueInsensitive struct {
 	V int
 }
 
-func (s *ScannerValue) Scan(src interface{}) error {
+func (s *ScannerValueInsensitive) Scan(src interface{}) error {
 	return errors.New("I failed")
 }
 
-type ScannerStruct struct {
-	V *ScannerValue
+type ScannerStructInsensitive struct {
+	V *ScannerValueInsensitive
 }
 
-type ScannerStructTo struct {
-	V *ScannerValue
+type ScannerStructToInsensitive struct {
+	V *ScannerValueInsensitive
 }
 
-func TestScanner(t *testing.T) {
-	s := &ScannerStruct{
-		V: &ScannerValue{
+func TestScannerInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
+	s := &ScannerStructInsensitive{
+		V: &ScannerValueInsensitive{
 			V: 12,
 		},
 	}
 
-	s2 := &ScannerStructTo{}
+	s2 := &ScannerStructToInsensitive{}
 
-	err := copier.Copy(s2, s)
+	err := copier.CopyWithOption(s2, s, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1385,7 +1425,8 @@ func TestScanner(t *testing.T) {
 	}
 }
 
-func TestScanFromPtrToSqlNullable(t *testing.T) {
+func TestScanFromPtrToSqlNullableInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	var (
 		from struct {
 			S     string
@@ -1418,7 +1459,7 @@ func TestScanFromPtrToSqlNullable(t *testing.T) {
 		t.Errorf("Must be not valid")
 	}
 
-	err = copier.Copy(&to, from)
+	err = copier.CopyWithOption(&to, from, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1440,7 +1481,7 @@ func TestScanFromPtrToSqlNullable(t *testing.T) {
 	from.T1.Scan(now)
 	from.T2.Scan(now)
 
-	err = copier.Copy(&to, from)
+	err = copier.CopyWithOption(&to, from, optionsInsensitive)
 	if err != nil {
 		t.Error("Should not raise error")
 	}
@@ -1462,7 +1503,7 @@ func TestScanFromPtrToSqlNullable(t *testing.T) {
 	}
 }
 
-func TestDeepCopyInterface(t *testing.T) {
+func TestDeepCopyInterfaceInsensitive(t *testing.T) {
 	m := make(map[string]string)
 	m["a"] = "ccc"
 
@@ -1491,7 +1532,7 @@ func TestDeepCopyInterface(t *testing.T) {
 	}
 }
 
-func TestDeepCopyTime(t *testing.T) {
+func TestDeepCopyTimeInsensitive(t *testing.T) {
 	type embedT1 struct {
 		T5 time.Time
 	}
@@ -1560,7 +1601,8 @@ func TestDeepCopyTime(t *testing.T) {
 	}
 }
 
-func TestNestedPrivateData(t *testing.T) {
+func TestNestedPrivateDataInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	type hasPrivate struct {
 		data int
 	}
@@ -1575,7 +1617,7 @@ func TestNestedPrivateData(t *testing.T) {
 		},
 	}
 	var shallow hasMembers
-	err := copier.Copy(&shallow, &src)
+	err := copier.CopyWithOption(&shallow, &src, optionsInsensitive)
 	if err != nil {
 		t.Errorf("could not complete shallow copy")
 	}
@@ -1597,7 +1639,7 @@ func TestNestedPrivateData(t *testing.T) {
 	}
 }
 
-func TestDeepMapCopyTime(t *testing.T) {
+func TestDeepMapCopyTimeInsensitive(t *testing.T) {
 	t1 := time.Now()
 	t2 := t1.Add(time.Second)
 	from := []map[string]interface{}{
@@ -1623,11 +1665,12 @@ func TestDeepMapCopyTime(t *testing.T) {
 	}
 }
 
-func TestCopySimpleTime(t *testing.T) {
+func TestCopySimpleTimeInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	from := time.Now()
 	to := time.Time{}
 
-	err := copier.Copy(&to, from)
+	err := copier.CopyWithOption(&to, from, optionsInsensitive)
 	if err != nil {
 		t.Error("should not error")
 	}
@@ -1636,7 +1679,7 @@ func TestCopySimpleTime(t *testing.T) {
 	}
 }
 
-func TestDeepCopySimpleTime(t *testing.T) {
+func TestDeepCopySimpleTimeInsensitive(t *testing.T) {
 	from := time.Now()
 	to := time.Time{}
 
@@ -1649,13 +1692,13 @@ func TestDeepCopySimpleTime(t *testing.T) {
 	}
 }
 
-type TimeWrapper struct {
+type TimeWrapperInsensitive struct {
 	time.Time
 }
 
-func TestDeepCopyAnonymousFieldTime(t *testing.T) {
-	from := TimeWrapper{time.Now()}
-	to := TimeWrapper{}
+func TestDeepCopyAnonymousFieldTimeInsensitive(t *testing.T) {
+	from := TimeWrapperInsensitive{time.Now()}
+	to := TimeWrapperInsensitive{}
 
 	err := copier.CopyWithOption(&to, from, copier.Option{DeepCopy: true})
 	if err != nil {
@@ -1666,7 +1709,8 @@ func TestDeepCopyAnonymousFieldTime(t *testing.T) {
 	}
 }
 
-func TestSqlNullFiled(t *testing.T) {
+func TestSqlNullFiledInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 
 	type sqlStruct struct {
 		MkId              sql.NullInt64
@@ -1688,7 +1732,7 @@ func TestSqlNullFiled(t *testing.T) {
 
 	to := dataStruct{}
 
-	err := copier.Copy(&to, from)
+	err := copier.CopyWithOption(&to, from, optionsInsensitive)
 	if err != nil {
 		t.Error("should not error")
 	}
@@ -1705,7 +1749,8 @@ func TestSqlNullFiled(t *testing.T) {
 	}
 }
 
-func TestEmptySlice(t *testing.T) {
+func TestEmptySliceInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	type Str1 string
 	type Str2 string
 	type Input1 struct {
@@ -1716,7 +1761,7 @@ func TestEmptySlice(t *testing.T) {
 	}
 	to := []*Input1(nil)
 	from := []*Input2{}
-	err := copier.Copy(&to, &from)
+	err := copier.CopyWithOption(&to, &from, optionsInsensitive)
 	if err != nil {
 		t.Error("should not error")
 	}
@@ -1726,7 +1771,7 @@ func TestEmptySlice(t *testing.T) {
 
 	to = []*Input1(nil)
 	from = []*Input2(nil)
-	err = copier.Copy(&to, &from)
+	err = copier.CopyWithOption(&to, &from, optionsInsensitive)
 	if err != nil {
 		t.Error("should not error")
 	}
@@ -1735,7 +1780,8 @@ func TestEmptySlice(t *testing.T) {
 	}
 }
 
-func TestNestedNilPointerStruct(t *testing.T) {
+func TestNestedNilPointerStructInsensitive(t *testing.T) {
+	var optionsInsensitive = copier.Option{CaseInsensitive: true}
 	type destination struct {
 		Title string
 	}
@@ -1755,7 +1801,7 @@ func TestNestedNilPointerStruct(t *testing.T) {
 
 	to := destination{}
 
-	err := copier.Copy(&to, from)
+	err := copier.CopyWithOption(&to, from, optionsInsensitive)
 	if err != nil {
 		t.Error("should not error")
 	}

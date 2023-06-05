@@ -29,7 +29,7 @@ func BenchmarkNamaCopy(b *testing.B) {
 	for x := 0; x < b.N; x++ {
 		employee := &Employee{
 			Name:      user.Name,
-			NickName:  &user.Nickname,
+			Nickname:  &user.Nickname,
 			Age:       int64(user.Age),
 			FakeAge:   int(*user.FakeAge),
 			DoubleAge: user.DoubleAge(),
