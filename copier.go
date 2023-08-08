@@ -41,6 +41,9 @@ type Option struct {
 	CaseSensitive bool
 	DeepCopy      bool
 	Converters    []TypeConverter
+	// Custom field name mappings to copy values with different names in `fromValue` and `toValue` types.
+	// Examples can be found in `copier_field_name_mapping_test.go`.
+	FieldNameMapping []FieldNameMapping
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -68,6 +71,27 @@ type TypeConverter struct {
 type converterPair struct {
 	SrcType reflect.Type
 	DstType reflect.Type
+}
+
+func (opt Option) fieldNameMapping() map[converterPair]FieldNameMapping {
+	var mapping = map[converterPair]FieldNameMapping{}
+
+	for i := range opt.FieldNameMapping {
+		pair := converterPair{
+			SrcType: reflect.TypeOf(opt.FieldNameMapping[i].SrcType),
+			DstType: reflect.TypeOf(opt.FieldNameMapping[i].DstType),
+		}
+
+		mapping[pair] = opt.FieldNameMapping[i]
+	}
+
+	return mapping
+}
+
+type FieldNameMapping struct {
+	SrcType interface{}
+	DstType interface{}
+	Mapping map[string]string
 }
 
 // Tag Flags
@@ -100,6 +124,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		from       = indirect(reflect.ValueOf(fromValue))
 		to         = indirect(reflect.ValueOf(toValue))
 		converters = opt.converters()
+		mappings   = opt.fieldNameMapping()
 	)
 
 	if !to.CanAddr() {
@@ -298,7 +323,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					continue
 				}
 
-				srcFieldName, destFieldName := getFieldName(name, flgs)
+				fieldNamesMapping := getFieldNamesMapping(mappings, fromType, toType)
+
+				srcFieldName, destFieldName := getFieldName(name, flgs, fieldNamesMapping)
 				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
@@ -365,7 +392,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			// Copy from from method to dest field
 			for _, field := range deepFields(toType) {
 				name := field.Name
-				srcFieldName, destFieldName := getFieldName(name, flgs)
+				srcFieldName, destFieldName := getFieldName(name, flgs, getFieldNamesMapping(mappings, fromType, toType))
 
 				var fromMethod reflect.Value
 				if source.CanAddr() {
@@ -427,6 +454,21 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	return
+}
+
+func getFieldNamesMapping(mappings map[converterPair]FieldNameMapping, fromType reflect.Type, toType reflect.Type) map[string]string {
+	var fieldNamesMapping map[string]string
+
+	if len(mappings) > 0 {
+		pair := converterPair{
+			SrcType: fromType,
+			DstType: toType,
+		}
+		if v, ok := mappings[pair]; ok {
+			fieldNamesMapping = v.Mapping
+		}
+	}
+	return fieldNamesMapping
 }
 
 func fieldByNameOrZeroValue(source reflect.Value, fieldName string) (value reflect.Value) {
@@ -727,8 +769,14 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 	return
 }
 
-func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldName string) {
+func getFieldName(fieldName string, flgs flags, fieldNameMapping map[string]string) (srcFieldName string, destFieldName string) {
 	// get dest field name
+	if name, ok := fieldNameMapping[fieldName]; ok {
+		srcFieldName = fieldName
+		destFieldName = name
+		return
+	}
+
 	if srcTagName, ok := flgs.SrcNames.FieldNameToTag[fieldName]; ok {
 		destFieldName = srcTagName
 		if destTagName, ok := flgs.DestNames.TagToFieldName[srcTagName]; ok {
