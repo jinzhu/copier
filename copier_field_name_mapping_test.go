@@ -21,10 +21,13 @@ func TestCustomFieldName(t *testing.T) {
 
 	u1 := User1{Id: 1, Name: "1", Address: []string{"1"}}
 	var u2 User2
-	err := copier.CopyWithOption(&u2, u1,
-		copier.Option{FieldNameMapping: []copier.FieldNameMapping{
-			{SrcType: u1, DstType: u2, Mapping: map[string]string{"Id": "Id2", "Name": "Name2", "Address": "Address2"}},
-		}})
+	err := copier.CopyWithOption(&u2, u1, copier.Option{FieldNameMapping: []copier.FieldNameMapping{
+		{SrcType: u1, DstType: u2,
+			Mapping: map[string]string{
+				"Id":      "Id2",
+				"Name":    "Name2",
+				"Address": "Address2"}},
+	}})
 
 	if err != nil {
 		t.Fatal(err)
