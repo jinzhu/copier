@@ -133,7 +133,7 @@ func TestAssignableType(t *testing.T) {
 
 	ts3 := &TypeStruct3{}
 
-	copier.Copy(&ts3, &ts)
+	copier.CopyWithOption(&ts3, &ts, copier.Option{CaseSensitive: true})
 
 	if v, ok := ts3.Field1.(string); !ok {
 		t.Error("Assign to interface{} type did not succeed")
