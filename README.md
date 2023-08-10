@@ -26,6 +26,20 @@ import (
 	"github.com/jinzhu/copier"
 )
 
+type Address struct{
+	City string
+	Street string
+} 
+
+// copier.Valuer interface lets custom types implement a function returning the actual value to copy.
+// For example if your type is a wrapper, or if it doesn't have to implement `sql/driver.Valuer`,
+// you can implement this interface so the returned value will be used instead. It can also be used
+// to format your type or convert it to another one before being copied.
+// This also enables conversion for types using generics, as you cannot use them with `TypeConverter`.
+func (a Address) CopyValue() interface{} {
+	return fmt.Sprintf("%s, %s", a.Street, a.City)
+}
+
 type User struct {
 	Name        string
 	Role        string
@@ -34,6 +48,8 @@ type User struct {
 
 	// Explicitly ignored in the destination struct.
 	Salary   int
+
+	Address Address
 }
 
 func (user *User) DoubleAge() int32 {
@@ -55,6 +71,8 @@ type Employee struct {
 	DoubleAge int32
 	EmployeeId int64 `copier:"EmployeeNum"` // specify field name
 	SuperRole string
+
+	Address string
 }
 
 func (employee *Employee) Role(role string) {
@@ -63,8 +81,10 @@ func (employee *Employee) Role(role string) {
 
 func main() {
 	var (
-		user      = User{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 200000}
-		users     = []User{{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 100000}, {Name: "jinzhu 2", Age: 30, Role: "Dev", Salary: 60000}}
+		user  = User{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 200000, Address: Address{Street: "123 Main Street", City: "Somewhere"}}
+		users = []User{
+			{Name: "Jinzhu", Age: 18, Role: "Admin", Salary: 100000, Address: Address{Street: "124 Secondary Street", City: "SomewhereElse"}},
+			{Name: "jinzhu 2", Age: 30, Role: "Dev", Salary: 60000, Address: Address{Street: "125 Secondary Street", City: "SomewhereElse"}}}
 		employee  = Employee{Salary: 150000}
 		employees = []Employee{}
 	)
@@ -73,12 +93,13 @@ func main() {
 
 	fmt.Printf("%#v \n", employee)
 	// Employee{
-	//    Name: "Jinzhu",           // Copy from field
-	//    Age: 18,                  // Copy from field
-	//    Salary:150000,            // Copying explicitly ignored
-	//    DoubleAge: 36,            // Copy from method
-	//    EmployeeId: 0,            // Ignored
-	//    SuperRole: "Super Admin", // Copy to method
+	//    Name: "Jinzhu",                          // Copy from field
+	//    Age: 18,                                 // Copy from field
+	//    Salary:150000,                           // Copying explicitly ignored
+	//    DoubleAge: 36,                           // Copy from method
+	//    EmployeeId: 0,                           // Ignored
+	//    SuperRole: "Super Admin",                // Copy to method
+	//    Address: "123 Main Street, Somewhere",   // Copy from value returned by CopyValue()
 	// }
 
 	// Copy struct to slice
@@ -86,7 +107,7 @@ func main() {
 
 	fmt.Printf("%#v \n", employees)
 	// []Employee{
-	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeeId: 0, SuperRole: "Super Admin"}
+	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeeId: 0, SuperRole: "Super Admin", Address: "123 Main Street, Somewhere"}
 	// }
 
 	// Copy slice to slice
@@ -95,8 +116,8 @@ func main() {
 
 	fmt.Printf("%#v \n", employees)
 	// []Employee{
-	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeeId: 0, SuperRole: "Super Admin"},
-	//   {Name: "jinzhu 2", Age: 30, Salary:0, DoubleAge: 60, EmployeeId: 0, SuperRole: "Super Dev"},
+	//   {Name: "Jinzhu", Age: 18, Salary:0, DoubleAge: 36, EmployeeId: 0, SuperRole: "Super Admin", Address: "124 Secondary Street, SomewhereElse"},
+	//   {Name: "jinzhu 2", Age: 30, Salary:0, DoubleAge: 60, EmployeeId: 0, SuperRole: "Super Dev", Address: "125 Secondary Street, SomewhereElse"},
 	// }
 
  	// Copy map to map
