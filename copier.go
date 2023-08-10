@@ -94,6 +94,15 @@ type FieldNameMapping struct {
 	Mapping map[string]string
 }
 
+// Valuer lets custom types implement a function returning the actual value to copy.
+// For example if your type is a wrapper, or if it doesn't have to implement `sql/driver.Valuer`,
+// you can implement this interface so the returned value will be used instead. It can also be used
+// to format your type or convert it to another one before being copied.
+// This also enables conversion for types using generics, as you cannot use them with `TypeConverter`.
+type Valuer interface {
+	CopyValue() interface{}
+}
+
 // Tag Flags
 type flags struct {
 	BitFlags  map[string]uint8
@@ -118,6 +127,11 @@ func CopyWithOption(toValue interface{}, fromValue interface{}, opt Option) (err
 }
 
 func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) {
+
+	if fromCopyValuer, ok := fromValue.(Valuer); ok {
+		fromValue = fromCopyValuer.CopyValue()
+	}
+
 	var (
 		isSlice    bool
 		amount     = 1
@@ -558,6 +572,11 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 	if !from.IsValid() {
 		return true, nil
 	}
+
+	if fromCopyValuer, ok := copyValuer(from); ok {
+		from = reflect.ValueOf(fromCopyValuer.CopyValue())
+	}
+
 	if ok, err := lookupAndCopyWithConverter(to, from, converters); err != nil {
 		return false, err
 	} else if ok {
@@ -816,6 +835,16 @@ func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
 	}
 
 	i, ok = v.Addr().Interface().(driver.Valuer)
+	return
+}
+
+func copyValuer(v reflect.Value) (i Valuer, ok bool) {
+	if !v.CanAddr() {
+		i, ok = v.Interface().(Valuer)
+		return
+	}
+
+	i, ok = v.Addr().Interface().(Valuer)
 	return
 }
 
