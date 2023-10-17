@@ -41,7 +41,7 @@ type Option struct {
 	// setting this value to true will ignore copying zero values of all the fields, including bools, as well as a
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
 	IgnoreEmpty        bool
-	CaseSensitive bool
+	CaseSensitive      bool
 	DeepCopy           bool
 	Converters         []TypeConverter
 	DefaultSourceFlags uint8
@@ -402,8 +402,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 							if err != nil {
 								return err
 							}
+
 							if !isSet {
-              	if originalFromField != nil {
+								newOpt := opt
+								if originalFromField != nil {
 									newOpt.originalFromTypeFields = deepFields(originalFromField.Type)
 								}
 								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
