@@ -41,10 +41,14 @@ type Option struct {
 	// setting this value to true will ignore copying zero values of all the fields, including bools, as well as a
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
 	IgnoreEmpty        bool
+	CaseSensitive bool
 	DeepCopy           bool
 	Converters         []TypeConverter
 	DefaultSourceFlags uint8
 	DefaultTargetFlags uint8
+	// Custom field name mappings to copy values with different names in `fromValue` and `toValue` types.
+	// Examples can be found in `copier_field_name_mapping_test.go`.
+	FieldNameMapping []FieldNameMapping
 	// If the field is not present on the origin, we won't overwrite it
 	SkipFieldIfNotInFrom bool
 	// Private field. Used to check if fields exist in original structure.
@@ -78,6 +82,27 @@ type converterPair struct {
 	DstType reflect.Type
 }
 
+func (opt Option) fieldNameMapping() map[converterPair]FieldNameMapping {
+	var mapping = map[converterPair]FieldNameMapping{}
+
+	for i := range opt.FieldNameMapping {
+		pair := converterPair{
+			SrcType: reflect.TypeOf(opt.FieldNameMapping[i].SrcType),
+			DstType: reflect.TypeOf(opt.FieldNameMapping[i].DstType),
+		}
+
+		mapping[pair] = opt.FieldNameMapping[i]
+	}
+
+	return mapping
+}
+
+type FieldNameMapping struct {
+	SrcType interface{}
+	DstType interface{}
+	Mapping map[string]string
+}
+
 // Tag Flags
 type flags struct {
 	BitFlags  map[string]uint8
@@ -108,6 +133,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		from       = indirect(reflect.ValueOf(fromValue))
 		to         = indirect(reflect.ValueOf(toValue))
 		converters = opt.converters()
+		mappings   = opt.fieldNameMapping()
 	)
 
 	if !to.CanAddr() {
@@ -231,6 +257,13 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	if len(converters) > 0 {
+		if ok, e := set(to, from, opt.DeepCopy, converters); e == nil && ok {
+			// converter supported
+			return
+		}
+	}
+
 	// Copy arrays
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
 		isSlice = true
@@ -260,6 +293,27 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		} else {
 			source = indirect(from)
 			dest = indirect(to)
+		}
+
+		if len(converters) > 0 {
+			if ok, e := set(dest, source, opt.DeepCopy, converters); e == nil && ok {
+				if isSlice {
+					// FIXME: maybe should check the other types?
+					if to.Type().Elem().Kind() == reflect.Ptr {
+						to.Index(i).Set(dest.Addr())
+					} else {
+						if to.Len() < i+1 {
+							reflect.Append(to, dest)
+						} else {
+							to.Index(i).Set(dest)
+						}
+					}
+				} else {
+					to.Set(dest)
+				}
+
+				continue
+			}
 		}
 
 		destKind := dest.Kind()
@@ -308,8 +362,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					continue
 				}
 
-				srcFieldName, destFieldName := getFieldName(name, flgs)
-				if fromField := source.FieldByName(srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
+				fieldNamesMapping := getFieldNamesMapping(mappings, fromType, toType)
+
+				srcFieldName, destFieldName := getFieldName(name, flgs, fieldNamesMapping)
+				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(destFieldName); ok {
@@ -339,7 +395,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 						break
 					}
 
-					toField := dest.FieldByName(destFieldName)
+					toField := fieldByName(dest, destFieldName, opt.CaseSensitive)
 					if toField.IsValid() {
 						if toField.CanSet() {
 							isSet, err := set(toField, fromField, opt.DeepCopy, converters)
@@ -378,7 +434,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			// Copy from from method to dest field
 			for _, field := range deepFields(toType) {
 				name := field.Name
-				srcFieldName, destFieldName := getFieldName(name, flgs)
+				srcFieldName, destFieldName := getFieldName(name, flgs, getFieldNamesMapping(mappings, fromType, toType))
 
 				var fromMethod reflect.Value
 				if source.CanAddr() {
@@ -388,7 +444,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				}
 
 				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 && !shouldIgnore(fromMethod, opt.IgnoreEmpty) {
-					if toField := dest.FieldByName(destFieldName); toField.IsValid() && toField.CanSet() {
+					if toField := fieldByName(dest, destFieldName, opt.CaseSensitive); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
 						if len(values) >= 1 {
 							set(toField, values[0], opt.DeepCopy, converters)
@@ -446,6 +502,31 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	return
+}
+
+func getFieldNamesMapping(mappings map[converterPair]FieldNameMapping, fromType reflect.Type, toType reflect.Type) map[string]string {
+	var fieldNamesMapping map[string]string
+
+	if len(mappings) > 0 {
+		pair := converterPair{
+			SrcType: fromType,
+			DstType: toType,
+		}
+		if v, ok := mappings[pair]; ok {
+			fieldNamesMapping = v.Mapping
+		}
+	}
+	return fieldNamesMapping
+}
+
+func fieldByNameOrZeroValue(source reflect.Value, fieldName string) (value reflect.Value) {
+	defer func() {
+		if err := recover(); err != nil {
+			value = reflect.Value{}
+		}
+	}()
+
+	return source.FieldByName(fieldName)
 }
 
 func copyUnexportedStructFields(to, from reflect.Value) {
@@ -567,7 +648,7 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		if from.Kind() == reflect.Ptr && from.IsNil() {
 			return true, nil
 		}
-		if toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice {
+		if _, ok := to.Addr().Interface().(sql.Scanner); !ok && (toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice) {
 			return false, nil
 		}
 	}
@@ -744,8 +825,14 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 	return
 }
 
-func getFieldName(fieldName string, flgs flags) (srcFieldName string, destFieldName string) {
+func getFieldName(fieldName string, flgs flags, fieldNameMapping map[string]string) (srcFieldName string, destFieldName string) {
 	// get dest field name
+	if name, ok := fieldNameMapping[fieldName]; ok {
+		srcFieldName = fieldName
+		destFieldName = name
+		return
+	}
+
 	if srcTagName, ok := flgs.SrcNames.FieldNameToTag[fieldName]; ok {
 		destFieldName = srcTagName
 		if destTagName, ok := flgs.DestNames.TagToFieldName[srcTagName]; ok {
@@ -786,4 +873,12 @@ func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
 
 	i, ok = v.Addr().Interface().(driver.Valuer)
 	return
+}
+
+func fieldByName(v reflect.Value, name string, caseSensitive bool) reflect.Value {
+	if caseSensitive {
+		return v.FieldByName(name)
+	}
+
+	return v.FieldByNameFunc(func(n string) bool { return strings.EqualFold(n, name) })
 }
