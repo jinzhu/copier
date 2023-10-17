@@ -1,7 +1,7 @@
 package copier_test
 
 import (
-	"github.com/jinzhu/copier"
+	"github.com/ekulabuhov/copier"
 	"reflect"
 	"testing"
 )
