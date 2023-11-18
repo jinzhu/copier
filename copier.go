@@ -136,6 +136,15 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return ErrInvalidCopyFrom
 	}
 
+	cacheToValue := indirect(reflect.New(to.Type()))
+	cacheToValue.Set(to)
+	defer func() {
+		//  if err occur, toValue needs to recover to init state.
+		if err != nil {
+			to.Set(cacheToValue)
+		}
+	}()
+
 	fromType, isPtrFrom := indirectType(from.Type())
 	toType, _ := indirectType(to.Type())
 
