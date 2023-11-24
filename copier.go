@@ -250,13 +250,6 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
-	if len(converters) > 0 {
-		if ok, e := set(to, from, opt.DeepCopy, converters); e == nil && ok {
-			// converter supported
-			return
-		}
-	}
-
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
 		isSlice = true
 		if from.Kind() == reflect.Slice {
@@ -281,24 +274,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			dest = indirect(to)
 		}
 
+		isSet := false
 		if len(converters) > 0 {
-			if ok, e := set(dest, source, opt.DeepCopy, converters); e == nil && ok {
-				if isSlice {
-					// FIXME: maybe should check the other types?
-					if to.Type().Elem().Kind() == reflect.Ptr {
-						to.Index(i).Set(dest.Addr())
-					} else {
-						if to.Len() < i+1 {
-							reflect.Append(to, dest)
-						} else {
-							to.Index(i).Set(dest)
-						}
-					}
-				} else {
-					to.Set(dest)
-				}
-
-				continue
+			if isSet, err = set(dest, source, opt.DeepCopy, converters); err != nil {
+				return err
 			}
 		}
 
@@ -316,7 +295,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// check source
-		if source.IsValid() {
+		if source.IsValid() && !isSet {
 			copyUnexportedStructFields(dest, source)
 
 			// Copy from source field to dest field or method
