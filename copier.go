@@ -44,6 +44,9 @@ type Option struct {
 	// Custom field name mappings to copy values with different names in `fromValue` and `toValue` types.
 	// Examples can be found in `copier_field_name_mapping_test.go`.
 	FieldNameMapping []FieldNameMapping
+
+	MustByDefault    bool
+	NoPanicByDefault bool
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -450,7 +453,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			to.Set(dest)
 		}
 
-		err = checkBitFlags(flgs.BitFlags)
+		err = checkBitFlags(flgs.BitFlags, opt.MustByDefault, opt.NoPanicByDefault)
 	}
 
 	return
@@ -753,15 +756,19 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 }
 
 // checkBitFlags Checks flags for error or panic conditions.
-func checkBitFlags(flagsList map[string]uint8) (err error) {
+func checkBitFlags(
+	flagsList map[string]uint8,
+	mustByDefault bool,
+	noPanicByDefault bool,
+) (err error) {
 	// Check flag conditions were met
 	for name, flgs := range flagsList {
 		if flgs&hasCopied == 0 {
 			switch {
-			case flgs&tagMust != 0 && flgs&tagNoPanic != 0:
+			case (flgs&tagMust != 0 || mustByDefault) && (flgs&tagNoPanic != 0 || noPanicByDefault):
 				err = fmt.Errorf("field %s has must tag but was not copied", name)
 				return
-			case flgs&(tagMust) != 0:
+			case flgs&(tagMust) != 0 || mustByDefault:
 				panic(fmt.Sprintf("Field %s has must tag but was not copied", name))
 			}
 		}
