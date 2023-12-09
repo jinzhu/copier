@@ -454,6 +454,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		err = checkBitFlags(flgs.BitFlags, opt.MustByDefault, opt.NoPanicByDefault)
+		if err != nil {
+			return err
+		}
 	}
 
 	return
