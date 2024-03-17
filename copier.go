@@ -232,6 +232,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					}
 				}
 			}
+
+			if to.Len() > from.Len() {
+				to.SetLen(from.Len())
+			}
+
 			return
 		}
 	}
