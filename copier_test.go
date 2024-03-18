@@ -1762,3 +1762,35 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+type testValuer struct {
+	Value interface{}
+}
+
+func (v testValuer) CopyValue() interface{} {
+	return v.Value
+}
+
+func TestCopyValuer(t *testing.T) {
+
+	to := struct {
+		Value string
+	}{
+		Value: "initial",
+	}
+
+	from := struct {
+		Value testValuer
+	}{
+		Value: testValuer{Value: "override"},
+	}
+
+	err := copier.Copy(&to, from)
+	if err != nil {
+		t.Errorf("should not error: %v", err)
+	}
+
+	if to.Value != from.Value.Value {
+		t.Errorf("to (%v) value should equal to from (%v) value", to.Value, from.Value.Value)
+	}
+}
