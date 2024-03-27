@@ -13,11 +13,14 @@ import (
 // These flags define options for tag handling
 const (
 	// Denotes that a destination field must be copied to. If copying fails then a panic will ensue.
-	tagMust uint8 = 1 << iota
+	TagMust uint8 = 1 << iota
 
 	// Denotes that the program should not panic when the must flag is on and
 	// value is not copied. The program will return an error instead.
-	tagNoPanic
+	TagNoPanic
+
+	// Won't apply default tags if value is a pointer
+	TagSkipPtrs
 
 	// Ignore a destination field from being copied to.
 	tagIgnore
@@ -37,13 +40,19 @@ const (
 type Option struct {
 	// setting this value to true will ignore copying zero values of all the fields, including bools, as well as a
 	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
-	IgnoreEmpty   bool
-	CaseSensitive bool
-	DeepCopy      bool
-	Converters    []TypeConverter
+	IgnoreEmpty        bool
+	CaseSensitive      bool
+	DeepCopy           bool
+	Converters         []TypeConverter
+	DefaultSourceFlags uint8
+	DefaultTargetFlags uint8
 	// Custom field name mappings to copy values with different names in `fromValue` and `toValue` types.
 	// Examples can be found in `copier_field_name_mapping_test.go`.
 	FieldNameMapping []FieldNameMapping
+	// If the field is not present on the origin, we won't overwrite it
+	SkipFieldIfNotInFrom bool
+	// Private field. Used to check if fields exist in original structure.
+	originalFromTypeFields []reflect.StructField
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -164,6 +173,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// Copy maps
 	if from.Kind() != reflect.Slice && fromType.Kind() == reflect.Map && toType.Kind() == reflect.Map {
 		if !fromType.Key().ConvertibleTo(toType.Key()) {
 			return ErrMapKeyNotMatch
@@ -210,12 +220,18 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return
 	}
 
+	// Checks if structs in the array have a 100% match on field names and types
 	if from.Kind() == reflect.Slice && to.Kind() == reflect.Slice {
 		if to.IsNil() {
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)
 		}
 		if fromType.ConvertibleTo(toType) {
+			// Resize to array, set len(to) = len(from)
+			if to.Len() > from.Len() {
+				to.SetLen(from.Len())
+			}
+
 			for i := 0; i < from.Len(); i++ {
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
@@ -253,13 +269,20 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 	}
 
+	// Copy arrays
 	if from.Kind() == reflect.Slice || to.Kind() == reflect.Slice {
 		isSlice = true
 		if from.Kind() == reflect.Slice {
 			amount = from.Len()
 		}
+
+		if to.Kind() == reflect.Slice && to.Len() > amount {
+			// Resize to array, set len(to) = len(from)
+			to.SetLen(amount)
+		}
 	}
 
+	// Go through each element of array
 	for i := 0; i < amount; i++ {
 		var dest, source reflect.Value
 
@@ -306,18 +329,34 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType)
+		flgs, err := getFlags(dest, source, toType, fromType, opt.DefaultSourceFlags, opt.DefaultTargetFlags)
 		if err != nil {
 			return err
 		}
+
+		var fromTypeFields []reflect.StructField
 
 		// check source
 		if source.IsValid() {
 			copyUnexportedStructFields(dest, source)
 
 			// Copy from source field to dest field or method
-			fromTypeFields := deepFields(fromType)
+			fromTypeFields = deepFields(fromType)
 			for _, field := range fromTypeFields {
+				var originalFromField *reflect.StructField
+				if len(opt.originalFromTypeFields) > 0 {
+					for _, v := range opt.originalFromTypeFields {
+						if v.Name == field.Name {
+							originalFromField = &v
+							break
+						}
+					}
+					// If the field does not exist in original struct - do not overwrite it
+					if originalFromField == nil {
+						continue
+					}
+				}
+
 				name := field.Name
 
 				// Get bit flags for field
@@ -368,7 +407,12 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 							if err != nil {
 								return err
 							}
+
 							if !isSet {
+								newOpt := opt
+								if originalFromField != nil {
+									newOpt.originalFromTypeFields = deepFields(originalFromField.Type)
+								}
 								if err := copier(toField.Addr().Interface(), fromField.Interface(), opt); err != nil {
 									return err
 								}
@@ -443,6 +487,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 						return err
 					}
 					if !isSet {
+						if opt.SkipFieldIfNotInFrom {
+							opt.originalFromTypeFields = fromTypeFields
+						}
 						// ignore error while copy slice element
 						err = copier(to.Index(i).Addr().Interface(), dest.Interface(), opt)
 						if err != nil {
@@ -456,6 +503,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		}
 
 		err = checkBitFlags(flgs.BitFlags)
+		if err != nil {
+			return err
+		}
 	}
 
 	return
@@ -690,9 +740,9 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 			flg = tagIgnore
 			return
 		case "must":
-			flg = flg | tagMust
+			flg = flg | TagMust
 		case "nopanic":
-			flg = flg | tagNoPanic
+			flg = flg | TagNoPanic
 		default:
 			if unicode.IsUpper([]rune(t)[0]) {
 				name = strings.TrimSpace(t)
@@ -705,7 +755,7 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 }
 
 // getTagFlags Parses struct tags for bit flags, field name.
-func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, error) {
+func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, defaultSourceFlags, defaultTargetFlags uint8) (flags, error) {
 	flgs := flags{
 		BitFlags: map[string]uint8{},
 		SrcNames: tagNameMapping{
@@ -737,6 +787,12 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 				flgs.DestNames.FieldNameToTag[field.Name] = name
 				flgs.DestNames.TagToFieldName[name] = field.Name
 			}
+		} else if defaultTargetFlags != 0 {
+			if defaultTargetFlags&TagSkipPtrs != 0 && field.Type.Kind() == reflect.Ptr {
+				continue
+			}
+
+			flgs.BitFlags[field.Name] = defaultTargetFlags
 		}
 	}
 
@@ -752,6 +808,8 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 				flgs.SrcNames.FieldNameToTag[field.Name] = name
 				flgs.SrcNames.TagToFieldName[name] = field.Name
 			}
+		} else if defaultSourceFlags != 0 {
+			flgs.BitFlags[field.Name] = defaultSourceFlags
 		}
 	}
 	return flgs, nil
@@ -763,10 +821,10 @@ func checkBitFlags(flagsList map[string]uint8) (err error) {
 	for name, flgs := range flagsList {
 		if flgs&hasCopied == 0 {
 			switch {
-			case flgs&tagMust != 0 && flgs&tagNoPanic != 0:
+			case flgs&TagMust != 0 && flgs&TagNoPanic != 0:
 				err = fmt.Errorf("field %s has must tag but was not copied", name)
 				return
-			case flgs&(tagMust) != 0:
+			case flgs&(TagMust) != 0:
 				panic(fmt.Sprintf("Field %s has must tag but was not copied", name))
 			}
 		}

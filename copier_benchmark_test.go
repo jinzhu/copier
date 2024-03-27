@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/jinzhu/copier"
+	"github.com/ekulabuhov/copier"
 )
 
 func BenchmarkCopyStruct(b *testing.B) {
