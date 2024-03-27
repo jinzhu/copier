@@ -1665,7 +1665,6 @@ func TestDeepCopyAnonymousFieldTime(t *testing.T) {
 }
 
 func TestSqlNullFiled(t *testing.T) {
-
 	type sqlStruct struct {
 		MkId              sql.NullInt64
 		MkExpiryDateType  sql.NullInt32
@@ -1761,4 +1760,71 @@ func TestNestedNilPointerStruct(t *testing.T) {
 	if from.Title != to.Title {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
+}
+
+func TestOccurErr(t *testing.T) {
+	t.Run("CopyWithOption err occur", func(t *testing.T) {
+		type srcTags struct {
+			Field string
+			Index int
+		}
+		type destTags struct {
+			Field string
+			Index string
+		}
+
+		dst := &destTags{
+			Field: "init",
+			Index: "0",
+		}
+		src := &srcTags{
+			Field: "copied",
+			Index: 1,
+		}
+		err := copier.CopyWithOption(dst, src, copier.Option{
+			Converters: []copier.TypeConverter{
+				{
+					SrcType: 1,
+					DstType: "",
+					Fn: func(src interface{}) (dst interface{}, err error) {
+						return nil, fmt.Errorf("return err")
+					},
+				},
+			},
+		})
+		if err == nil {
+			t.Errorf("should return err")
+		}
+		if dst.Field != "init" || dst.Index != "0" {
+			t.Error("when err occur, the dst should be init")
+		}
+
+	})
+	t.Run("copy err occur", func(t *testing.T) {
+		type srcTags struct {
+			field  string
+			Field2 string
+		}
+
+		type destTags struct {
+			Field  string `copier:"field"`
+			Field2 string `copier:"Field2"`
+		}
+
+		dst := &destTags{
+			Field:  "init",
+			Field2: "init2",
+		}
+		src := &srcTags{
+			field:  "Field1->Field1",
+			Field2: "Field2->Field2",
+		}
+		err := copier.Copy(dst, src)
+		if err == nil {
+			t.Errorf("should return err")
+		}
+		if dst.Field != "init" || dst.Field2 != "init2" {
+			t.Error("when err occur, the dst should be init")
+		}
+	})
 }
