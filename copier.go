@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"unicode"
 )
 
 // These flags define options for tag handling
