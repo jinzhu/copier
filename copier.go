@@ -698,11 +698,12 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 		case "nopanic":
 			flg = flg | tagNoPanic
 		default:
-			if unicode.IsUpper([]rune(t)[0]) {
-				name = strings.TrimSpace(t)
-			} else {
-				err = ErrFieldNameTagStartNotUpperCase
-			}
+			name = strings.TrimSpace(t)
+			// if unicode.IsUpper([]rune(t)[0]) {
+			// 	name = strings.TrimSpace(t)
+			// } else {
+			// 	err = ErrFieldNameTagStartNotUpperCase
+			// }
 		}
 	}
 	return
