@@ -704,6 +704,7 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 			// 	err = ErrFieldNameTagStartNotUpperCase
 			// }
 		}
+		return
 	}
 	return
 }
