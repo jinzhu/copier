@@ -51,8 +51,7 @@ type Employee struct {
     Name string
     Role string
     Age  int32
-
-	DoubleAge int32
+    DoubleAge int32
 }
 
 func (employee *Employee) Role(role string) {
