@@ -254,11 +254,15 @@ func main() {
 			Email:  "john.doe@example.com",
 			Phones: []string{"123-456-7890", "098-765-4321"},
 		},
+        PrimaryContact: nil, // Intentionally empty to demonstrate `override`
 	}
 
 	manager := Manager{
 		ManagedCities:   []string{"Los Angeles", "Boston"},
-		PrimaryContact:  nil, // Intentionally empty to demonstrate `override`
+		PrimaryContact:  &Contact{
+			Email:  "john.doe@example.com",
+			Phones: []string{"123-456-7890", "098-765-4321"},
+		}, // since override is set this should be overridden with nil
 		SecondaryEmails: []string{"secondary@example.com"},
 	}
 
