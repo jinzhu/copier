@@ -76,13 +76,23 @@ func main() {
 Fields tagged with `copier:"-"` are explicitly ignored by Copier during the copying process.
 
 ```go
-func main() {
-    user := User{Name: "Jinzhu", Salary: 200000}
-    employee := Employee{Salary: 150000}
+type Source struct {
+    Name   string
+    Secret string // We do not want this to be copied.
+}
 
-    copier.Copy(&employee, &user)
-    fmt.Printf("Salary: %d\n", employee.Salary)
-    // Output: Salary: 150000, demonstrating that Salary field was ignored.
+type Target struct {
+    Name   string
+    Secret string `copier:"-"`
+}
+
+func main() {
+    source := Source{Name: "John", Secret: "so_secret"}
+    target := Target{}
+
+    copier.Copy(&target, &source)
+    fmt.Printf("Name: %s, Secret: '%s'\n", target.Name, target.Secret)
+    // Output: Name: John, Secret: ''
 }
 ```
 
@@ -91,15 +101,23 @@ func main() {
 The `copier:"must"` tag forces a field to be copied, resulting in a panic or an error if the field cannot be copied.
 
 ```go
-func main() {
-    user := User{}
-    employee := Employee{}
+type MandatorySource struct {
+    ID int
+}
 
-    err := copier.Copy(&employee, &user)
+type MandatoryTarget struct {
+    ID int `copier:"must"` // This field must be copied, or it will panic/error.
+}
+
+func main() {
+    source := MandatorySource{}
+    target := MandatoryTarget{}
+
+    // This will result in a panic or an error since ID is a must field but is empty in source.
+    err := copier.Copy(&target, &source)
     if err != nil {
         log.Fatal(err)
     }
-    // Note: This example assumes modification in the library to handle 'must' flag appropriately.
 }
 ```
 
@@ -108,14 +126,23 @@ func main() {
 Similar to `copier:"must"`, but Copier returns an error instead of panicking if the field is not copied.
 
 ```go
-func main() {
-    src := Source{}
-    dest := Destination{}
+type SafeSource struct {
+    Code string
+}
 
-    err := copier.Copy(&dest, &src)
+type SafeTarget struct {
+    Code string `copier:"must,nopanic"` // Enforce copying without panic.
+}
+
+func main() {
+    source := SafeSource{}
+    target := SafeTarget{}
+
+    err := copier.Copy(&target, &source)
     if err != nil {
-        log.Printf("Error: %v\n", err)
+        fmt.Println("Error:", err)
     }
+    // This will not panic, but will return an error due to missing mandatory field.
 }
 ```
 
@@ -124,13 +151,23 @@ func main() {
 Fields tagged with `copier:"override"` are copied even if IgnoreEmpty is set to true in Copier options and works for nil values.
 
 ```go
-func main() {
-    src := Destination{Name: nil}
-    dest := Source{&name}
+type SourceWithNil struct {
+    Details *string
+}
 
-    copier.CopyWithOption(&dest, &src, copier.Option{IgnoreEmpty: true})
-    fmt.Printf("Name: %s\n", *dest.Name)
-    // Output shows that Name was copied despite being nil in `src`.
+type TargetOverride struct {
+    Details *string `copier:"override"` // Even if source is nil, copy it.
+}
+
+func main() {
+    details := "Important details"
+    source := SourceWithNil{Details: nil}
+    target := TargetOverride{Details: &details}
+
+    copier.CopyWithOption(&target, &source, copier.Option{IgnoreEmpty: true})
+    if target.Details == nil {
+        fmt.Println("Details field was overridden to nil.")
+    }
 }
 ```
 
@@ -139,15 +176,25 @@ func main() {
 Use field tags to specify a custom field name when the source and destination field names do not match.
 
 ```go
-func main() {
-    user := User{EmployeeCode: 12345}
-    employee := Employee{}
+type SourceEmployee struct {
+    Identifier int64
+}
 
-    copier.Copy(&employee, &user)
-    fmt.Printf("%#v\n", employee)
-    // Output: Employee{EmployeeId: 12345}, demonstrating custom field name mapping.
+type TargetWorker struct {
+    ID int64 `copier:"Identifier"` // Map Identifier from SourceEmployee to ID in TargetWorker
+}
+
+func main() {
+    source := SourceEmployee{Identifier: 1001}
+    target := TargetWorker{}
+
+    copier.Copy(&target, &source)
+    fmt.Printf("Worker ID: %d\n", target.ID)
+    // Output: Worker ID: 1001
 }
 ```
+
+## Other examples
 
 ### Copy from Method to Field with Same Name
 
