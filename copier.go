@@ -335,7 +335,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 				srcFieldName, destFieldName := getFieldName(name, flgs, fieldNamesMapping)
 
-				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, srcFieldName, destFieldName, flgs, opt.IgnoreEmpty) {
+				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, fieldFlags, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(destFieldName); ok {
@@ -410,7 +410,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					fromMethod = source.MethodByName(srcFieldName)
 				}
 
-				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 && !shouldIgnore(fromMethod, srcFieldName, destFieldName, flgs, opt.IgnoreEmpty) {
+				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 && !shouldIgnore(fromMethod, flgs.BitFlags[destFieldName], opt.IgnoreEmpty) {
 					if toField := fieldByName(dest, destFieldName, opt.CaseSensitive); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
 						if len(values) >= 1 {
@@ -508,8 +508,8 @@ func copyUnexportedStructFields(to, from reflect.Value) {
 	to.Set(tmp)
 }
 
-func shouldIgnore(v reflect.Value, from, to string, flgs flags, ignoreEmpty bool) bool {
-	return ignoreEmpty && (flgs.BitFlags[from]&tagOverride == 0 && flgs.BitFlags[to]&tagOverride == 0) && v.IsZero()
+func shouldIgnore(v reflect.Value, bitFlags uint8, ignoreEmpty bool) bool {
+	return ignoreEmpty && bitFlags&tagOverride == 0 && v.IsZero()
 }
 
 var deepFieldsLock sync.RWMutex
