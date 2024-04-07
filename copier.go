@@ -22,7 +22,7 @@ const (
 	// Ignore a destination field from being copied to.
 	tagIgnore
 
-	// Denotes the fact that the field show be overridden no matter if the field is nil
+	// Denotes the fact that the field should be overridden, no matter if the IgnoreEmpty is set
 	tagOverride
 
 	// Denotes that the value as been copied
