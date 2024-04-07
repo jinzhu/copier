@@ -593,6 +593,9 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 			}
 			// allocate new `to` variable with default value (eg. *string -> new(string))
 			to.Set(reflect.New(to.Type().Elem()))
+		} else if from.Kind() != reflect.Ptr && from.IsZero() {
+			to.Set(reflect.Zero(to.Type()))
+			return true, nil
 		}
 		// depointer `to`
 		to = to.Elem()
@@ -607,6 +610,7 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 			}
 		}
 		if from.Kind() == reflect.Ptr && from.IsNil() {
+			to.Set(reflect.Zero(to.Type()))
 			return true, nil
 		}
 		if _, ok := to.Addr().Interface().(sql.Scanner); !ok && (toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice) {

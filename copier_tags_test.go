@@ -60,6 +60,29 @@ func TestCopyTagOverrideZeroValue(t *testing.T) {
 	}
 }
 
+func TestCopyTagOverridePtrToZeroValue(t *testing.T) {
+	options := copier.Option{IgnoreEmpty: true}
+	address := "21 Jump Street"
+	user1 := User1{ID: 100, Address: ""}
+	user2 := User2{DOB: "1 November, 1970", Address: &address, ID: 12345}
+
+	copier.CopyWithOption(&user2, user1, options)
+	if user2.Address != nil {
+		t.Error("Original Address was not overwritten")
+	}
+}
+
+func TestCopyTagOverrideZeroValueToPtr(t *testing.T) {
+	options := copier.Option{IgnoreEmpty: true}
+	user1 := User2{DOB: "1 November, 1970", Address: nil, ID: 12345}
+	user2 := User1{ID: 100, Address: "1 November, 1970"}
+
+	copier.CopyWithOption(&user2, user1, options)
+	if user1.Address != nil {
+		t.Error("Original Address was not overwritten")
+	}
+}
+
 func TestCopyTagOverridePtr(t *testing.T) {
 	options := copier.Option{IgnoreEmpty: true}
 	address := "21 Jump Street"
