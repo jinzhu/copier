@@ -206,7 +206,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					to.SetMapIndex(toKey, toValue)
 					break
 				}
-				elemType = reflect.PtrTo(elemType)
+				elemType = reflect.PointerTo(elemType)
 				toValue = toValue.Addr()
 			}
 		}
