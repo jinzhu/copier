@@ -22,6 +22,9 @@ const (
 	// Ignore a destination field from being copied to.
 	tagIgnore
 
+	// Denotes the fact that the field show be overridden no matter if the field is nil
+	tagOverride
+
 	// Denotes that the value as been copied
 	hasCopied
 
@@ -331,7 +334,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				fieldNamesMapping := getFieldNamesMapping(mappings, fromType, toType)
 
 				srcFieldName, destFieldName := getFieldName(name, flgs, fieldNamesMapping)
-				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, opt.IgnoreEmpty) {
+
+				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, srcFieldName, destFieldName, flgs, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
 					if f, ok := dest.Type().FieldByName(destFieldName); ok {
@@ -406,7 +410,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					fromMethod = source.MethodByName(srcFieldName)
 				}
 
-				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 && !shouldIgnore(fromMethod, opt.IgnoreEmpty) {
+				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 && !shouldIgnore(fromMethod, srcFieldName, destFieldName, flgs, opt.IgnoreEmpty) {
 					if toField := fieldByName(dest, destFieldName, opt.CaseSensitive); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
 						if len(values) >= 1 {
@@ -504,8 +508,8 @@ func copyUnexportedStructFields(to, from reflect.Value) {
 	to.Set(tmp)
 }
 
-func shouldIgnore(v reflect.Value, ignoreEmpty bool) bool {
-	return ignoreEmpty && v.IsZero()
+func shouldIgnore(v reflect.Value, from, to string, flgs flags, ignoreEmpty bool) bool {
+	return ignoreEmpty && (flgs.BitFlags[from]&tagOverride == 0 && flgs.BitFlags[to]&tagOverride == 0) && v.IsZero()
 }
 
 var deepFieldsLock sync.RWMutex
@@ -693,6 +697,8 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 			flg = flg | tagMust
 		case "nopanic":
 			flg = flg | tagNoPanic
+		case "override":
+			flg = flg | tagOverride
 		default:
 			if unicode.IsUpper([]rune(t)[0]) {
 				name = strings.TrimSpace(t)
@@ -717,6 +723,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 			TagToFieldName: map[string]string{},
 		},
 	}
+
 	var toTypeFields, fromTypeFields []reflect.StructField
 	if dest.IsValid() {
 		toTypeFields = deepFields(toType)
@@ -746,6 +753,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 		if tags != "" {
 			var name string
 			var err error
+
 			if _, name, err = parseTags(tags); err != nil {
 				return flags{}, err
 			} else if name != "" {
@@ -754,6 +762,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 			}
 		}
 	}
+
 	return flgs, nil
 }
 
