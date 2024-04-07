@@ -16,13 +16,13 @@ type EmployeeTags struct {
 type User1 struct {
 	Name    string
 	DOB     string
-	Address string
+	Address string `copier:"override"`
 	ID      int
 }
 
 type User2 struct {
 	DOB     string
-	Address string
+	Address *string `copier:"override"`
 	ID      int
 }
 
@@ -47,6 +47,29 @@ func TestCopyTagMust(t *testing.T) {
 		}
 	}()
 	copier.Copy(employee, user)
+}
+
+func TestCopyTagOverrideZeroValue(t *testing.T) {
+	options := copier.Option{IgnoreEmpty: true}
+	employee := EmployeeTags{ID: 100, Address: ""}
+	user := User1{Name: "Dexter Ledesma", DOB: "1 November, 1970", Address: "21 Jump Street", ID: 12345}
+
+	copier.CopyWithOption(&user, employee, options)
+	if user.Address != "" {
+		t.Error("Original Address was not overwritten")
+	}
+}
+
+func TestCopyTagOverridePtr(t *testing.T) {
+	options := copier.Option{IgnoreEmpty: true}
+	address := "21 Jump Street"
+	user2 := User2{ID: 100, Address: nil}
+	user := User2{DOB: "1 November, 1970", Address: &address, ID: 12345}
+
+	copier.CopyWithOption(&user, user2, options)
+	if user.Address != nil {
+		t.Error("Original Address was not overwritten")
+	}
 }
 
 func TestCopyTagFieldName(t *testing.T) {
