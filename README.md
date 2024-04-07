@@ -38,9 +38,9 @@ import "github.com/jinzhu/copier"
 
 ```go
 type User struct {
-    Name string
-    Role string
-    Age  int32
+	Name string
+	Role string
+	Age  int32
 }
 
 func (user *User) DoubleAge() int32 {
@@ -48,10 +48,10 @@ func (user *User) DoubleAge() int32 {
 }
 
 type Employee struct {
-    Name string
-    Role string
-    Age  int32
-    DoubleAge int32
+	Name      string
+	Age       int32
+	DoubleAge int32
+	SuperRole string
 }
 
 func (employee *Employee) Role(role string) {
@@ -59,12 +59,12 @@ func (employee *Employee) Role(role string) {
 }
 
 func main() {
-    user := User{Name: "Jinzhu", Age: 18, Role: "Admin"}
-    employee := Employee{}
+	user := User{Name: "Jinzhu", Age: 18, Role: "Admin"}
+	employee := Employee{}
 
-    copier.Copy(&employee, &user)
-    fmt.Printf("%#v\n", employee)
-    // Output: Employee{Name: "Jinzhu", Role: "Admin", Age: 18}
+	copier.Copy(&employee, &user)
+	fmt.Printf("%#v\n", employee)
+	// Output: Employee{Name:"Jinzhu", Age:18, DoubleAge:36, SuperRole:"Super Admin"}
 }
 ```
 
@@ -101,22 +101,21 @@ The `copier:"must"` tag forces a field to be copied, resulting in a panic or an 
 
 ```go
 type MandatorySource struct {
-    ID int
+	Identification int
 }
 
 type MandatoryTarget struct {
-    ID int `copier:"must"` // This field must be copied, or it will panic/error.
+	ID int `copier:"must"` // This field must be copied, or it will panic/error.
 }
 
 func main() {
-    source := MandatorySource{}
-    target := MandatoryTarget{}
+	source := MandatorySource{}
+	target := MandatoryTarget{ID: 10}
 
-    // This will result in a panic or an error since ID is a must field but is empty in source.
-    err := copier.Copy(&target, &source)
-    if err != nil {
-        log.Fatal(err)
-    }
+	// This will result in a panic or an error since ID is a must field but is empty in source.
+	if err := copier.Copy(&target, &source); err != nil {
+		log.Fatal(err)
+	}
 }
 ```
 
@@ -126,22 +125,21 @@ Similar to `copier:"must"`, but Copier returns an error instead of panicking if 
 
 ```go
 type SafeSource struct {
-    Code string
+	ID string
 }
 
 type SafeTarget struct {
-    Code string `copier:"must,nopanic"` // Enforce copying without panic.
+	Code string `copier:"must,nopanic"` // Enforce copying without panic.
 }
 
 func main() {
-    source := SafeSource{}
-    target := SafeTarget{}
+	source := SafeSource{}
+	target := SafeTarget{Code: "200"}
 
-    err := copier.Copy(&target, &source)
-    if err != nil {
-        fmt.Println("Error:", err)
-    }
-    // This will not panic, but will return an error due to missing mandatory field.
+	if err := copier.Copy(&target, &source); err != nil {
+		log.Fatalln("Error:", err)
+	}
+	// This will not panic, but will return an error due to missing mandatory field.
 }
 ```
 
@@ -269,8 +267,8 @@ type Address struct {
 }
 
 type Contact struct {
-	Email   string
-	Phones  []string
+	Email  string
+	Phones []string
 }
 
 type Employee struct {
@@ -281,10 +279,10 @@ type Employee struct {
 }
 
 type Manager struct {
-	Name            string   `copier:"must"`
-	Age             int32    `copier:"must,nopanic"`
+	Name            string `copier:"must"`
+	Age             int32  `copier:"must,nopanic"`
 	ManagedCities   []string
-	PrimaryContact  *Contact  `copier:"override"`
+	Contact         *Contact `copier:"override"`
 	SecondaryEmails []string
 }
 
@@ -296,16 +294,12 @@ func main() {
 			{City: "New York", Country: "USA"},
 			{City: "San Francisco", Country: "USA"},
 		},
-		Contact: &Contact{
-			Email:  "john.doe@example.com",
-			Phones: []string{"123-456-7890", "098-765-4321"},
-		},
-        PrimaryContact: nil, // Intentionally empty to demonstrate `override`
+		Contact: nil,
 	}
 
 	manager := Manager{
-		ManagedCities:   []string{"Los Angeles", "Boston"},
-		PrimaryContact:  &Contact{
+		ManagedCities: []string{"Los Angeles", "Boston"},
+		Contact: &Contact{
 			Email:  "john.doe@example.com",
 			Phones: []string{"123-456-7890", "098-765-4321"},
 		}, // since override is set this should be overridden with nil
@@ -316,7 +310,7 @@ func main() {
 
 	fmt.Printf("Manager: %#v\n", manager)
 	// Output: Manager struct showcasing copied fields from Employee,
-    // including overridden and deeply copied nested slices.
+	// including overridden and deeply copied nested slices.
 }
 ```
 
