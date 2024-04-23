@@ -122,7 +122,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		isSlice    bool
 		amount     = 1
 		from       = indirect(reflect.ValueOf(fromValue))
-		to         = indirect(reflect.ValueOf(toValue))
+		to         = indirectAndFill(reflect.ValueOf(toValue))
 		converters = opt.converters()
 		mappings   = opt.fieldNameMapping()
 	)
@@ -542,6 +542,16 @@ func deepFields(reflectType reflect.Type) []reflect.StructField {
 	deepFieldsMap[reflectType] = res
 	deepFieldsLock.Unlock()
 	return res
+}
+
+func indirectAndFill(reflectValue reflect.Value) reflect.Value {
+	for reflectValue.Kind() == reflect.Ptr {
+		if reflectValue.IsNil() {
+			reflectValue.Set(reflect.New(reflectValue.Type().Elem()))
+		}
+		reflectValue = reflectValue.Elem()
+	}
+	return reflectValue
 }
 
 func indirect(reflectValue reflect.Value) reflect.Value {
