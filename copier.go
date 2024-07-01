@@ -610,9 +610,14 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		}
 	}
 
+	// try convert directly
 	if from.Type().ConvertibleTo(to.Type()) {
 		to.Set(from.Convert(to.Type()))
-	} else if toScanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+		return true, nil
+	}
+
+	// try Scanner
+	if toScanner, ok := to.Addr().Interface().(sql.Scanner); ok {
 		// `from`  -> `to`
 		// *string -> sql.NullString
 		if from.Kind() == reflect.Ptr {
@@ -627,10 +632,13 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		// string -> sql.NullString
 		// set `to` by invoking method Scan(`from`)
 		err := toScanner.Scan(from.Interface())
-		if err != nil {
-			return false, nil
+		if err == nil {
+			return true, nil
 		}
-	} else if fromValuer, ok := driverValuer(from); ok {
+	}
+
+	// try Valuer
+	if fromValuer, ok := driverValuer(from); ok {
 		// `from`         -> `to`
 		// sql.NullString -> string
 		v, err := fromValuer.Value()
@@ -644,16 +652,21 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		rv := reflect.ValueOf(v)
 		if rv.Type().AssignableTo(to.Type()) {
 			to.Set(rv)
-		} else if to.CanSet() && rv.Type().ConvertibleTo(to.Type()) {
-			to.Set(rv.Convert(to.Type()))
+			return true, nil
 		}
-	} else if from.Kind() == reflect.Ptr {
-		return set(to, from.Elem(), deepCopy, converters)
-	} else {
+		if to.CanSet() && rv.Type().ConvertibleTo(to.Type()) {
+			to.Set(rv.Convert(to.Type()))
+			return true, nil
+		}
 		return false, nil
 	}
 
-	return true, nil
+	// from is ptr
+	if from.Kind() == reflect.Ptr {
+		return set(to, from.Elem(), deepCopy, converters)
+	}
+
+	return false, nil
 }
 
 // lookupAndCopyWithConverter looks up the type pair, on success the TypeConverter Fn func is called to copy src to dst field.
