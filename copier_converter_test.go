@@ -1,7 +1,11 @@
 package copier_test
 
 import (
+	"bytes"
+	"database/sql/driver"
+	"encoding/json"
 	"errors"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
@@ -216,5 +220,62 @@ func TestCopyWithConverterRaisingError(t *testing.T) {
 	if err == nil {
 		t.Fatalf(`Should be raising an error.`)
 		return
+	}
+}
+
+type IntArray []int
+
+func (a IntArray) Value() (driver.Value, error) {
+	return json.Marshal(a)
+}
+
+type Int int
+
+type From struct {
+	Data IntArray
+}
+
+type To struct {
+	Data []byte
+}
+
+type FailedTo struct {
+	Data []Int
+}
+
+func TestValuerConv(t *testing.T) {
+	// when the field of struct implement driver.Valuer and cannot convert to dest type directly,
+	// copier.set() will return a unexpected (true, nil)
+
+	typ1 := reflect.TypeOf(IntArray{})
+	typ2 := reflect.TypeOf([]Int{})
+
+	if typ1 == typ2 || typ1.ConvertibleTo(typ2) || typ1.AssignableTo(typ2) {
+		// in 1.22 and older, u can not convert typ1 to typ2
+		t.Errorf("can not convert %v to %v direct", typ1, typ2)
+	}
+
+	var (
+		from = From{
+			Data: IntArray{1, 2, 3},
+		}
+		to       To
+		failedTo FailedTo
+	)
+	if err := copier.Copy(&to, from); err != nil {
+		t.Fatal(err)
+	}
+	if err := copier.Copy(&failedTo, from); err != nil {
+		t.Fatal(err)
+	}
+
+	// Testcase1: valuer conv case
+	if !bytes.Equal(to.Data, []byte(`[1,2,3]`)) {
+		t.Errorf("can not convert %v to %v using valuer", typ1, typ2)
+	}
+
+	// Testcase2: fallback case when valuer conv failed
+	if len(failedTo.Data) != 3 || failedTo.Data[0] != 1 || failedTo.Data[1] != 2 || failedTo.Data[2] != 3 {
+		t.Errorf("copier failed from %#v to %#v", from, failedTo)
 	}
 }
