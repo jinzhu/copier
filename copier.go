@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"strings"
 	"sync"
-	"unicode"
 )
 
 // These flags define options for tag handling
@@ -47,6 +46,8 @@ type Option struct {
 	// Custom field name mappings to copy values with different names in `fromValue` and `toValue` types.
 	// Examples can be found in `copier_field_name_mapping_test.go`.
 	FieldNameMapping []FieldNameMapping
+	// Tag
+	Tag 		  string
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -311,9 +312,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			initDest = true
 			dest = indirect(reflect.New(toType))
 		}
-
+		if opt.Tag == "" {
+			opt.Tag = "copier"
+		}
 		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType)
+		flgs, err := getFlags(dest, source, toType, fromType, opt.Tag)
 		if err != nil {
 			return err
 		}
@@ -721,18 +724,20 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 		case "override":
 			flg = flg | tagOverride
 		default:
-			if unicode.IsUpper([]rune(t)[0]) {
-				name = strings.TrimSpace(t)
-			} else {
-				err = ErrFieldNameTagStartNotUpperCase
-			}
+			name = strings.TrimSpace(t)
+			// if unicode.IsUpper([]rune(t)[0]) {
+			// 	name = strings.TrimSpace(t)
+			// } else {
+			// 	err = ErrFieldNameTagStartNotUpperCase
+			// }
 		}
+		return
 	}
 	return
 }
 
 // getTagFlags Parses struct tags for bit flags, field name.
-func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, error) {
+func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, tag string) (flags, error) {
 	flgs := flags{
 		BitFlags: map[string]uint8{},
 		SrcNames: tagNameMapping{
@@ -755,7 +760,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 
 	// Get a list dest of tags
 	for _, field := range toTypeFields {
-		tags := field.Tag.Get("copier")
+		tags := field.Tag.Get(tag)
 		if tags != "" {
 			var name string
 			var err error
@@ -770,7 +775,7 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 
 	// Get a list source of tags
 	for _, field := range fromTypeFields {
-		tags := field.Tag.Get("copier")
+		tags := field.Tag.Get(tag)
 		if tags != "" {
 			var name string
 			var err error
