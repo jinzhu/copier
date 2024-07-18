@@ -211,6 +211,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	}
 
 	if from.Kind() == reflect.Slice && to.Kind() == reflect.Slice {
+		// Return directly if both slices are nil
+		if from.IsNil() && to.IsNil() {
+			return
+		}
 		if to.IsNil() {
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)

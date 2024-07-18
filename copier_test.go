@@ -112,6 +112,18 @@ func checkEmployee2(employee Employee, user *User, t *testing.T, testCase string
 	checkEmployee(employee, *user, t, testCase)
 }
 
+func TestCopySliceOfDifferentTypes(t *testing.T) {
+	var ss []string
+	var is []int
+	if err := copier.Copy(&ss, is); err != nil {
+		t.Error(err)
+	}
+	var anotherSs []string
+	if !reflect.DeepEqual(ss, anotherSs) {
+		t.Errorf("Copy nil slice to nil slice should get nil slice")
+	}
+}
+
 func TestCopyStruct(t *testing.T) {
 	var fakeAge int32 = 12
 	user := User{Name: "Jinzhu", Nickname: "jinzhu", Age: 18, FakeAge: &fakeAge, Role: "Admin", Notes: []string{"hello world", "welcome"}, flags: []byte{'x'}}
