@@ -284,7 +284,7 @@ func TestCopyFromSliceToSlice3(t *testing.T) {
 	}
 
 	for idx := range mockedResult {
-		if mockedResult[idx].Name != mockedResult[idx].Name || mockedResult[idx].CollectionName != mockedResult[idx].CollectionName {
+		if mockedResult[idx].Name != expectedResult[idx].Name || mockedResult[idx].CollectionName != expectedResult[idx].CollectionName {
 			t.Fatalf("failed to copy results")
 		}
 	}
