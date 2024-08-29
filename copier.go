@@ -139,6 +139,12 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		return ErrInvalidCopyFrom
 	}
 
+	// If the target is an empty interface with value nil, simply copy the value
+	if from.Kind() == reflect.Struct && from.Type().AssignableTo(to.Type()) && reflect.TypeOf(to.Interface()) == nil {
+		to.Set(from)
+		return
+	}
+
 	fromType, isPtrFrom := indirectType(from.Type())
 	toType, _ := indirectType(to.Type())
 
