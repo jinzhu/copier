@@ -284,6 +284,17 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			dest = indirect(to)
 		}
 
+		if source.IsValid() {
+			if valuer, ok := source.Interface().(driver.Valuer); ok {
+				value, err := valuer.Value()
+				if err != nil {
+					return err
+				}
+				source = indirect(reflect.ValueOf(value))
+				fromType, _ = indirectType(reflect.TypeOf(value))
+			}
+		}
+
 		if len(converters) > 0 {
 			if ok, e := set(dest, source, opt.DeepCopy, converters); e == nil && ok {
 				if isSlice {
