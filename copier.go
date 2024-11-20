@@ -47,6 +47,9 @@ type Option struct {
 	// Custom field name mappings to copy values with different names in `fromValue` and `toValue` types.
 	// Examples can be found in `copier_field_name_mapping_test.go`.
 	FieldNameMapping []FieldNameMapping
+
+	// SkipUnexported will skip private fields: they will not be copied
+	SkipUnexported bool
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -320,7 +323,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 
 		// check source
 		if source.IsValid() {
-			copyUnexportedStructFields(dest, source)
+			if !opt.SkipUnexported {
+				copyUnexportedStructFields(dest, source)
+			}
 
 			// Copy from source field to dest field or method
 			fromTypeFields := deepFields(fromType)

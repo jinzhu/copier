@@ -380,6 +380,10 @@ func TestStructField(t *testing.T) {
 		DeepCopy: true,
 	}
 
+	optionsSkipUnexported := copier.Option{
+		SkipUnexported: true,
+	}
+
 	checkDetail := func(t *testing.T, source Detail, target Detail) {
 		if source.Info1 != target.Info1 {
 			t.Errorf("info1 is diff: source: %v, target: %v", source.Info1, target.Info1)
@@ -701,6 +705,52 @@ func TestStructField(t *testing.T) {
 			}
 			if to.Notes[1] == (*from.Notes)[1] {
 				t.Errorf("should be different")
+			}
+		})
+	})
+
+	t.Run("should handle unexported fields", func(t *testing.T) {
+		t.Run("should copy unexported fields", func(t *testing.T) {
+			from := &struct {
+				unexportedField string
+			}{
+				unexportedField: "foo",
+			}
+
+			to := &struct {
+				unexportedField string
+			}{}
+
+			err := copier.Copy(to, from)
+			if err != nil {
+				t.Errorf("should not return an error")
+				return
+			}
+
+			if to.unexportedField != from.unexportedField {
+				t.Errorf("should be equal")
+			}
+		})
+
+		t.Run("should not copy unexported fields with disallowed by the option", func(t *testing.T) {
+			from := &struct {
+				unexportedField string
+			}{
+				unexportedField: "foo",
+			}
+
+			to := &struct {
+				unexportedField string
+			}{}
+
+			err := copier.CopyWithOption(to, from, optionsSkipUnexported)
+			if err != nil {
+				t.Errorf("should not return an error")
+				return
+			}
+
+			if to.unexportedField == from.unexportedField {
+				t.Errorf("should not be equal")
 			}
 		})
 	})
