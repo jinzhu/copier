@@ -1774,3 +1774,46 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+func TestMustNoPanicReturnsError(t *testing.T) {
+	type SafeSource struct {
+		ID string
+	}
+
+	type SafeTarget struct {
+		Code string `copier:"must,nopanic"` // Enforce copying without panic.
+	}
+
+	source := SafeSource{}
+	target := SafeTarget{Code: "200"}
+
+	err := copier.Copy(&target, &source)
+	if err == nil {
+		t.Errorf("field has must,nopanic tag but no error returned")
+	}
+}
+
+func TestMustShouldPanic(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Errorf("should have error in r because `nopanic` tag is not set")
+		}
+	}()
+	type SafeSource struct {
+		ID string
+	}
+
+	type SafeTarget struct {
+		Code string `copier:"must"` // Enforce copying without panic.
+	}
+
+	source := SafeSource{}
+	target := SafeTarget{Code: "200"}
+
+	err := copier.Copy(&target, &source)
+	if err != nil {
+		t.Errorf("field has `must` but no `nopanic` tag, no error should be returned")
+	}
+	t.Errorf("field has `must` but no `nopanic` tag, should panic")
+}
