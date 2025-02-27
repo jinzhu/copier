@@ -35,9 +35,12 @@ func BenchmarkNamaCopy(b *testing.B) {
 			DoubleAge: user.DoubleAge(),
 		}
 
-		for _, note := range user.Notes {
-			employee.Notes = append(employee.Notes, &note)
+		employee.Notes = make([]*string, len(user.Notes))
+		for idx, note := range user.Notes {
+			tmp := note
+			employee.Notes[idx] = &tmp
 		}
+
 		employee.Role(user.Role)
 	}
 }
