@@ -1774,3 +1774,35 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+type testStruct struct {
+	Prop string
+}
+
+type testHolder struct {
+	Data interface{}
+}
+
+func newHolder(data interface{}) testHolder {
+	h := testHolder{}
+	copier.Copy(&(h.Data), data)
+	return h
+}
+
+func getDataFromHolder(holder testHolder, data interface{}) {
+	copier.Copy(data, holder.Data)
+}
+
+func TestCopyToNilEmptyInterface(t *testing.T) {
+	expected := testStruct{Prop: "expected"}
+
+	holder := newHolder(&expected)
+
+	actual := testStruct{}
+
+	getDataFromHolder(holder, &actual)
+
+	if expected.Prop != actual.Prop {
+		t.Fatalf("wanted %s got %s", expected.Prop, actual.Prop)
+	}
+}
