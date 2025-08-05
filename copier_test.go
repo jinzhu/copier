@@ -1774,3 +1774,21 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+func TestCopyToNilPointerOfStruct(t *testing.T) {
+	type struct1 struct {
+		A int
+	}
+	type struct2 struct {
+		A int
+	}
+	s1 := struct1{A: 1}
+	var s2 *struct2
+	err := copier.Copy(&s2, s1)
+	if err != nil {
+		t.Error("should not error")
+	}
+	if s1.A != (*s2).A {
+		t.Error("should equal")
+	}
+}
