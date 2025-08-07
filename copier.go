@@ -47,6 +47,11 @@ type Option struct {
 	// Custom field name mappings to copy values with different names in `fromValue` and `toValue` types.
 	// Examples can be found in `copier_field_name_mapping_test.go`.
 	FieldNameMapping []FieldNameMapping
+	// When set to true, all fields will be treated as if they have the "must" tag
+	Must bool
+	// When set to true, all fields will be treated as if they have the "nopanic" tag.
+	// This only has an effect when Must is also true
+	NoPanic bool
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -312,8 +317,8 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			dest = indirect(reflect.New(toType))
 		}
 
-		// Get tag options
-		flgs, err := getFlags(dest, source, toType, fromType)
+		var flgs flags
+		flgs, err = getFlags(dest, source, toType, fromType, opt)
 		if err != nil {
 			return err
 		}
@@ -732,7 +737,7 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 }
 
 // getTagFlags Parses struct tags for bit flags, field name.
-func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, error) {
+func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option) (flags, error) {
 	flgs := flags{
 		BitFlags: map[string]uint8{},
 		SrcNames: tagNameMapping{
@@ -744,6 +749,9 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 			TagToFieldName: map[string]string{},
 		},
 	}
+
+	mustOpt := opt.Must
+	noPanicOpt := opt.NoPanic
 
 	var toTypeFields, fromTypeFields []reflect.StructField
 	if dest.IsValid() {
@@ -765,6 +773,14 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type) (flags, er
 				flgs.DestNames.FieldNameToTag[field.Name] = name
 				flgs.DestNames.TagToFieldName[name] = field.Name
 			}
+		}
+
+		// Apply default flags
+		if mustOpt {
+			flgs.BitFlags[field.Name] = flgs.BitFlags[field.Name] | tagMust
+		}
+		if noPanicOpt {
+			flgs.BitFlags[field.Name] = flgs.BitFlags[field.Name] | tagNoPanic
 		}
 	}
 

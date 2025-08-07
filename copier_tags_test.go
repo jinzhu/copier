@@ -13,6 +13,20 @@ type EmployeeTags struct {
 	ID      int `copier:"-"`
 }
 
+type EmployeeTags2 struct {
+	Name    string `copier:"must,nopanic"`
+	DOB     string
+	Address string
+	ID      int `copier:"-"`
+}
+
+type EmployeeTags3 struct {
+	Name    string
+	DOB     string
+	Address string
+	ID      int
+}
+
 type User1 struct {
 	Name    string
 	DOB     string
@@ -47,6 +61,46 @@ func TestCopyTagMust(t *testing.T) {
 		}
 	}()
 	copier.Copy(employee, user)
+}
+
+func TestCopyTagMustByOption(t *testing.T) {
+	employee := &EmployeeTags3{}
+	user := &User2{DOB: "1 January 1970"}
+	t.Run("must is true", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r == nil {
+				t.Error("Expected a panic.")
+			}
+		}()
+		copier.CopyWithOption(employee, user, copier.Option{Must: true})
+	})
+
+	t.Run("must is false", func(t *testing.T) {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Error("Expected no panic.")
+			}
+		}()
+		copier.CopyWithOption(employee, user, copier.Option{Must: false})
+	})
+}
+
+func TestCopyTagMustAndNoPanic(t *testing.T) {
+	employee := &EmployeeTags2{}
+	user := &User2{DOB: "1 January 1970"}
+	err := copier.Copy(employee, user)
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestCopyTagMustAndNoPanicByOption(t *testing.T) {
+	employee := &EmployeeTags3{}
+	user := &User2{DOB: "1 January 1970"}
+	err := copier.CopyWithOption(employee, user, copier.Option{Must: true, NoPanic: true})
+	if err == nil {
+		t.Error("expected error")
+	}
 }
 
 func TestCopyTagOverrideZeroValue(t *testing.T) {
