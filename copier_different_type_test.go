@@ -30,7 +30,7 @@ type TypeStruct2 struct {
 }
 
 type TypeStruct3 struct {
-	Field1 interface{}
+	Field1 any
 	Field2 string
 	Field3 TypeStruct4
 	Field4 *TypeStruct4
@@ -136,7 +136,7 @@ func TestAssignableType(t *testing.T) {
 	copier.CopyWithOption(&ts3, &ts, copier.Option{CaseSensitive: true})
 
 	if v, ok := ts3.Field1.(string); !ok {
-		t.Error("Assign to interface{} type did not succeed")
+		t.Error("Assign to any type did not succeed")
 	} else if v != "str1" {
 		t.Error("String haven't been copied correctly")
 	}

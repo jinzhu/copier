@@ -46,7 +46,7 @@ func TestCopyWithTypeConverters(t *testing.T) {
 			{
 				SrcType: time.Time{},
 				DstType: copier.String,
-				Fn: func(src interface{}) (interface{}, error) {
+				Fn: func(src any) (any, error) {
 					s, ok := src.(time.Time)
 
 					if !ok {
@@ -59,7 +59,7 @@ func TestCopyWithTypeConverters(t *testing.T) {
 			{
 				SrcType: copier.String,
 				DstType: copier.Int,
-				Fn: func(src interface{}) (interface{}, error) {
+				Fn: func(src any) (any, error) {
 					s, ok := src.(string)
 
 					if !ok {
@@ -118,7 +118,7 @@ func TestCopyWithConverterAndAnnotation(t *testing.T) {
 			{
 				SrcType: copier.String,
 				DstType: copier.String,
-				Fn: func(src interface{}) (interface{}, error) {
+				Fn: func(src any) (any, error) {
 					s, ok := src.(string)
 
 					if !ok {
@@ -164,7 +164,7 @@ func TestCopyWithConverterStrToStrPointer(t *testing.T) {
 			{
 				SrcType: copier.String,
 				DstType: &ptrStrType,
-				Fn: func(src interface{}) (interface{}, error) {
+				Fn: func(src any) (any, error) {
 					s, _ := src.(string)
 
 					// return nil on empty string
@@ -211,7 +211,7 @@ func TestCopyWithConverterRaisingError(t *testing.T) {
 			{
 				SrcType: copier.String,
 				DstType: &ptrStrType,
-				Fn: func(src interface{}) (interface{}, error) {
+				Fn: func(src any) (any, error) {
 					return nil, errors.New("src type not matching")
 				},
 			},

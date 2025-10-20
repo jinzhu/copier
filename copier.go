@@ -52,6 +52,8 @@ type Option struct {
 	// When set to true, all fields will be treated as if they have the "nopanic" tag.
 	// This only has an effect when Must is also true
 	NoPanic bool
+	// When set to true, copier will use json tag to match field names between structs
+	UseJSONTag bool
 }
 
 func (opt Option) converters() map[converterPair]TypeConverter {
@@ -71,9 +73,9 @@ func (opt Option) converters() map[converterPair]TypeConverter {
 }
 
 type TypeConverter struct {
-	SrcType interface{}
-	DstType interface{}
-	Fn      func(src interface{}) (dst interface{}, err error)
+	SrcType any
+	DstType any
+	Fn      func(src any) (dst any, err error)
 }
 
 type converterPair struct {
@@ -97,8 +99,8 @@ func (opt Option) fieldNameMapping() map[converterPair]FieldNameMapping {
 }
 
 type FieldNameMapping struct {
-	SrcType interface{}
-	DstType interface{}
+	SrcType any
+	DstType any
 	Mapping map[string]string
 }
 
@@ -116,16 +118,16 @@ type tagNameMapping struct {
 }
 
 // Copy copy things
-func Copy(toValue interface{}, fromValue interface{}) (err error) {
+func Copy(toValue any, fromValue any) (err error) {
 	return copier(toValue, fromValue, Option{})
 }
 
 // CopyWithOption copy with option
-func CopyWithOption(toValue interface{}, fromValue interface{}, opt Option) (err error) {
+func CopyWithOption(toValue any, fromValue any, opt Option) (err error) {
 	return copier(toValue, fromValue, opt)
 }
 
-func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) {
+func copier(toValue any, fromValue any, opt Option) (err error) {
 	var (
 		isSlice    bool
 		amount     = 1
@@ -775,6 +777,21 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 			}
 		}
 
+		// If UseJSONTag is enabled and no copier tag name is set, try to use json tag
+		if opt.UseJSONTag {
+			if _, hasName := flgs.DestNames.FieldNameToTag[field.Name]; !hasName {
+				jsonTag := field.Tag.Get("json")
+				if jsonTag != "" && jsonTag != "-" {
+					// Parse json tag, it may contain options like "name,omitempty"
+					jsonName := strings.Split(jsonTag, ",")[0]
+					if jsonName != "" {
+						flgs.DestNames.FieldNameToTag[field.Name] = jsonName
+						flgs.DestNames.TagToFieldName[jsonName] = field.Name
+					}
+				}
+			}
+		}
+
 		// Apply default flags
 		if mustOpt {
 			flgs.BitFlags[field.Name] = flgs.BitFlags[field.Name] | tagMust
@@ -796,6 +813,21 @@ func getFlags(dest, src reflect.Value, toType, fromType reflect.Type, opt Option
 			} else if name != "" {
 				flgs.SrcNames.FieldNameToTag[field.Name] = name
 				flgs.SrcNames.TagToFieldName[name] = field.Name
+			}
+		}
+
+		// If UseJSONTag is enabled and no copier tag name is set, try to use json tag
+		if opt.UseJSONTag {
+			if _, hasName := flgs.SrcNames.FieldNameToTag[field.Name]; !hasName {
+				jsonTag := field.Tag.Get("json")
+				if jsonTag != "" && jsonTag != "-" {
+					// Parse json tag, it may contain options like "name,omitempty"
+					jsonName := strings.Split(jsonTag, ",")[0]
+					if jsonName != "" {
+						flgs.SrcNames.FieldNameToTag[field.Name] = jsonName
+						flgs.SrcNames.TagToFieldName[jsonName] = field.Name
+					}
+				}
 			}
 		}
 	}

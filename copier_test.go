@@ -717,7 +717,7 @@ func TestMapInterface(t *testing.T) {
 	}
 
 	type DriverOptions struct {
-		GenOptions map[string]interface{}
+		GenOptions map[string]any
 	}
 
 	t.Run("Should work without deepCopy", func(t *testing.T) {
@@ -729,7 +729,7 @@ func TestMapInterface(t *testing.T) {
 			},
 		}
 		from := DriverOptions{
-			GenOptions: map[string]interface{}{
+			GenOptions: map[string]any{
 				"key": outer,
 			},
 		}
@@ -755,7 +755,7 @@ func TestMapInterface(t *testing.T) {
 			},
 		}
 		from := DriverOptions{
-			GenOptions: map[string]interface{}{
+			GenOptions: map[string]any{
 				"key": outer,
 			},
 		}
@@ -775,8 +775,8 @@ func TestMapInterface(t *testing.T) {
 	})
 
 	t.Run("Test copy map with nil interface", func(t *testing.T) {
-		from := map[string]interface{}{"eventId": nil}
-		to := map[string]interface{}{"eventId": nil}
+		from := map[string]any{"eventId": nil}
+		to := map[string]any{"eventId": nil}
 		copier.CopyWithOption(&to, &from, copier.Option{IgnoreEmpty: true, DeepCopy: true})
 		if v, ok := to["eventId"]; !ok || v != nil {
 			t.Errorf("failed to deep copy map with nil, got %v", v)
@@ -799,15 +799,15 @@ func TestMapInterface(t *testing.T) {
 	})
 
 	t.Run("Test copy map with nested slice map", func(t *testing.T) {
-		var out map[string]interface{}
-		value := map[string]interface{}{
-			"list": []map[string]interface{}{
+		var out map[string]any
+		value := map[string]any{
+			"list": []map[string]any{
 				{
 					"shop_id": 123,
 				},
 			},
-			"list2": []interface{}{
-				map[string]interface{}{
+			"list2": []any{
+				map[string]any{
 					"shop_id": 123,
 				},
 			},
@@ -832,7 +832,7 @@ func TestInterface(t *testing.T) {
 	}
 
 	type DriverOptions struct {
-		GenOptions interface{}
+		GenOptions any
 	}
 
 	t.Run("Should work without deepCopy", func(t *testing.T) {
@@ -1364,7 +1364,7 @@ type ScannerValue struct {
 	V int
 }
 
-func (s *ScannerValue) Scan(src interface{}) error {
+func (s *ScannerValue) Scan(src any) error {
 	return errors.New("I failed")
 }
 
@@ -1476,8 +1476,8 @@ func TestDeepCopyInterface(t *testing.T) {
 	m := make(map[string]string)
 	m["a"] = "ccc"
 
-	from := []interface{}{[]int{7, 8, 9}, 2, 3, m, errors.New("aaaa")}
-	var to []interface{}
+	from := []any{[]int{7, 8, 9}, 2, 3, m, errors.New("aaaa")}
+	var to []any
 
 	copier.CopyWithOption(&to, &from, copier.Option{
 		IgnoreEmpty: false,
@@ -1610,13 +1610,13 @@ func TestNestedPrivateData(t *testing.T) {
 func TestDeepMapCopyTime(t *testing.T) {
 	t1 := time.Now()
 	t2 := t1.Add(time.Second)
-	from := []map[string]interface{}{
+	from := []map[string]any{
 		{
 			"t1": t1,
 			"t2": &t2,
 		},
 	}
-	to := make([]map[string]interface{}, len(from))
+	to := make([]map[string]any, len(from))
 
 	err := copier.CopyWithOption(&to, from, copier.Option{DeepCopy: true})
 	if err != nil {
