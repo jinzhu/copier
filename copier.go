@@ -435,33 +435,13 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, dest.Addr()))
 				} else {
-					isSet, err := set(to.Index(i), dest.Addr(), opt.DeepCopy, converters)
-					if err != nil {
-						return err
-					}
-					if !isSet {
-						// ignore error while copy slice element
-						err = copier(to.Index(i).Addr().Interface(), dest.Addr().Interface(), opt)
-						if err != nil {
-							continue
-						}
-					}
+					to.Index(i).Set(dest.Addr())
 				}
 			} else if dest.Type().AssignableTo(to.Type().Elem()) {
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, dest))
 				} else {
-					isSet, err := set(to.Index(i), dest, opt.DeepCopy, converters)
-					if err != nil {
-						return err
-					}
-					if !isSet {
-						// ignore error while copy slice element
-						err = copier(to.Index(i).Addr().Interface(), dest.Interface(), opt)
-						if err != nil {
-							continue
-						}
-					}
+					to.Index(i).Set(dest)
 				}
 			}
 		} else if initDest {
