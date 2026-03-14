@@ -2,6 +2,7 @@ package copier_test
 
 import (
 	"database/sql"
+	"reflect"
 	"testing"
 	"time"
 
@@ -219,4 +220,47 @@ func TestCopyFromBaseToSqlNullWithOptionDeepCopy(t *testing.T) {
 	if !b.H.Valid || b.H.String != "deep" {
 		t.Errorf("b.H = %v, want %v", b.H, "deep")
 	}
+}
+
+func TestCopyWithAnySlice(t *testing.T) {
+	t.Run("AnySliceWithDeepCopy", func(t *testing.T) {
+		from := []interface{}{
+			map[string]interface{}{
+				"K1": "V1",
+				"K2": "V2",
+			},
+		}
+		var to []map[string]string
+		err := copier.CopyWithOption(&to, from, copier.Option{DeepCopy: true})
+		if err != nil {
+			t.Errorf("CopyStructWithOption() error = %v", err)
+			return
+		}
+		want := []map[string]string{{"K1": "V1", "K2": "V2"}}
+		ok := reflect.DeepEqual(to, want)
+		if !ok {
+			t.Errorf("toVal = %v, want %v", to, want)
+		}
+	})
+	t.Run("AnySliceWithoutDeepCopy", func(t *testing.T) {
+		from := []interface{}{
+			map[string]interface{}{
+				"K1": "V1",
+				"K2": "V2",
+			},
+		}
+		var to []map[string]string
+		err := copier.CopyWithOption(&to, from, copier.Option{DeepCopy: false})
+		if err != nil {
+			t.Errorf("CopyStructWithOption() error = %v", err)
+			return
+		}
+		want := []map[string]string{
+			nil,
+		}
+		ok := reflect.DeepEqual(to, want)
+		if !ok {
+			t.Errorf("toVal = %v, want %v", to, want)
+		}
+	})
 }
