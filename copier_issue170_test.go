@@ -1,9 +1,10 @@
 package copier_test
 
 import (
-	"github.com/jinzhu/copier"
 	"reflect"
 	"testing"
+
+	"github.com/jinzhu/copier"
 )
 
 type A struct {
