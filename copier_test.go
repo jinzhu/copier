@@ -1676,7 +1676,7 @@ func TestDeepCopyAnonymousFieldTime(t *testing.T) {
 	}
 }
 
-func TestSqlNullFiled(t *testing.T) {
+func TestSqlNullField(t *testing.T) {
 
 	type sqlStruct struct {
 		MkId              sql.NullInt64
