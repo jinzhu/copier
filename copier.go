@@ -25,7 +25,7 @@ const (
 	// Denotes the fact that the field should be overridden, no matter if the IgnoreEmpty is set
 	tagOverride
 
-	// Denotes that the value as been copied
+	// Denotes that the value has been copied
 	hasCopied
 
 	// Some default converter types for a nicer syntax
@@ -39,7 +39,7 @@ const (
 // Option sets copy options
 type Option struct {
 	// setting this value to true will ignore copying zero values of all the fields, including bools, as well as a
-	// struct having all it's fields set to their zero values respectively (see IsZero() in reflect/value.go)
+	// struct having all its fields set to their zero values respectively (see IsZero() in reflect/value.go)
 	IgnoreEmpty   bool
 	CaseSensitive bool
 	DeepCopy      bool
