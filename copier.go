@@ -410,6 +410,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			// Copy from from method to dest field
 			for _, field := range deepFields(toType) {
 				name := field.Name
+				fieldFlags := flgs.BitFlags[name]
+				if fieldFlags&tagIgnore != 0 {
+					continue
+				}
 				srcFieldName, destFieldName := getFieldName(name, flgs, getFieldNamesMapping(mappings, fromType, toType))
 
 				var fromMethod reflect.Value
@@ -419,10 +423,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					fromMethod = source.MethodByName(srcFieldName)
 				}
 
-				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 && !shouldIgnore(fromMethod, flgs.BitFlags[name], opt.IgnoreEmpty) {
+				if fromMethod.IsValid() && fromMethod.Type().NumIn() == 0 && fromMethod.Type().NumOut() == 1 {
 					if toField := fieldByName(dest, destFieldName, opt.CaseSensitive); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
-						if len(values) >= 1 {
+						if len(values) >= 1 && !shouldIgnore(values[0], fieldFlags, opt.IgnoreEmpty) {
 							set(toField, values[0], opt.DeepCopy, converters)
 						}
 					}
