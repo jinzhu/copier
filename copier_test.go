@@ -1774,3 +1774,47 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+type any = interface{}
+
+func TestCopySliceOfAny(t *testing.T) {
+	// 1. Copying []any{"a", "b", "c"} into []string{}
+	var strSlice []string
+	fromStrs := []any{"a", "b", "c"}
+	if err := copier.Copy(&strSlice, fromStrs); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedStrs := []string{"a", "b", "c"}
+	if !reflect.DeepEqual(strSlice, expectedStrs) {
+		t.Errorf("expected %v, got %v", expectedStrs, strSlice)
+	}
+
+	// Also verify with pre-initialized empty slice
+	strSlice2 := []string{}
+	if err := copier.Copy(&strSlice2, fromStrs); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(strSlice2, expectedStrs) {
+		t.Errorf("expected %v, got %v", expectedStrs, strSlice2)
+	}
+
+	// 2. Copying []any{map[string]any{"k": "v"}} into []map[string]string{}
+	var mapSlice []map[string]string
+	fromMaps := []any{map[string]any{"k": "v"}}
+	if err := copier.Copy(&mapSlice, fromMaps); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	expectedMaps := []map[string]string{{"k": "v"}}
+	if !reflect.DeepEqual(mapSlice, expectedMaps) {
+		t.Errorf("expected %v, got %v", expectedMaps, mapSlice)
+	}
+
+	mapSlice2 := []map[string]string{}
+	if err := copier.Copy(&mapSlice2, fromMaps); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !reflect.DeepEqual(mapSlice2, expectedMaps) {
+		t.Errorf("expected %v, got %v", expectedMaps, mapSlice2)
+	}
+}
+
