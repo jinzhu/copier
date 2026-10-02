@@ -1774,3 +1774,89 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+func TestCopySliceOfStructs_TruncateDestination(t *testing.T) {
+	type Addr struct {
+		State   string
+		City    string
+		ZipCode int
+	}
+
+	type Addr2 struct {
+		State   string
+		City    string
+		ZipCode int
+		No      string
+	}
+
+	type TestUser struct {
+		Name     string
+		Age      int
+		Sex      string
+		Hobbies  []string
+		IsSigned bool
+		Family   string
+		Addr     []*Addr
+	}
+
+	type TestUser2 struct {
+		Name     string
+		Hobbies  []string
+		IsSigned bool
+		Score    float64
+		Addr     []*Addr2
+	}
+
+	user := TestUser{
+		Name:     "张三1",
+		Age:      18,
+		Sex:      "male",
+		Hobbies:  []string{"socker"},
+		IsSigned: false,
+		Family:   "张三2",
+		Addr: []*Addr{
+			{
+				State:   "北京",
+				City:    "北京",
+				ZipCode: 100000,
+			},
+		},
+	}
+
+	user2 := TestUser2{
+		Name:     "张三2",
+		Hobbies:  []string{"football", "basketball"},
+		IsSigned: true,
+		Score:    6.6,
+		Addr: []*Addr2{
+			{
+				State:   "南京",
+				City:    "南京",
+				ZipCode: 888,
+				No:      "9",
+			},
+			{
+				State:   "南京2",
+				City:    "南京2",
+				ZipCode: 8882,
+				No:      "92",
+			},
+		},
+	}
+
+	err := copier.CopyWithOption(&user2, &user, copier.Option{
+		IgnoreEmpty:   false,
+		CaseSensitive: true,
+		DeepCopy:      false,
+	})
+	if err != nil {
+		t.Fatalf("Copy failed: %v", err)
+	}
+
+	if len(user2.Addr) != 1 {
+		t.Fatalf("expected user2.Addr length 1, got %d", len(user2.Addr))
+	}
+	if user2.Addr[0].State != "北京" || user2.Addr[0].City != "北京" || user2.Addr[0].ZipCode != 100000 {
+		t.Errorf("unexpected user2.Addr[0]: %+v", user2.Addr[0])
+	}
+}

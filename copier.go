@@ -471,6 +471,12 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 		err = checkBitFlags(flgs.BitFlags)
 	}
 
+	if isSlice && to.Kind() == reflect.Slice && from.Kind() == reflect.Slice {
+		if to.Len() > from.Len() {
+			to.SetLen(from.Len())
+		}
+	}
+
 	return
 }
 
