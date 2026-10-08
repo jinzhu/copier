@@ -204,3 +204,45 @@ func TestCopyTagFieldName(t *testing.T) {
 		}
 	})
 }
+
+func TestCopyTagWhitespaceAndEmpty(t *testing.T) {
+	t.Run("tags with whitespace and trailing comma", func(t *testing.T) {
+		type Src struct {
+			Name string
+			Age  int
+		}
+		type Dst struct {
+			Name string `copier:" override , must "`
+			Age  int    `copier:"Age, "`
+		}
+
+		src := Src{Name: "Alice", Age: 30}
+		var dst Dst
+		err := copier.Copy(&dst, &src)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if dst.Name != "Alice" || dst.Age != 30 {
+			t.Fatalf("unexpected copied values: %+v", dst)
+		}
+	})
+
+	t.Run("field name mapping with space", func(t *testing.T) {
+		type Src struct {
+			FullName string
+		}
+		type Dst struct {
+			Name string `copier:" FullName , override "`
+		}
+
+		src := Src{FullName: "Bob"}
+		var dst Dst
+		err := copier.Copy(&dst, &src)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if dst.Name != "Bob" {
+			t.Fatalf("expected Bob, got %s", dst.Name)
+		}
+	})
+}
