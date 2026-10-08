@@ -715,6 +715,10 @@ func lookupAndCopyWithConverter(to, from reflect.Value, converters map[converter
 // parseTags Parses struct tags and returns uint8 bit flags.
 func parseTags(tag string) (flg uint8, name string, err error) {
 	for _, t := range strings.Split(tag, ",") {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			continue
+		}
 		switch t {
 		case "-":
 			flg = tagIgnore
@@ -726,8 +730,9 @@ func parseTags(tag string) (flg uint8, name string, err error) {
 		case "override":
 			flg = flg | tagOverride
 		default:
-			if unicode.IsUpper([]rune(t)[0]) {
-				name = strings.TrimSpace(t)
+			runes := []rune(t)
+			if len(runes) > 0 && unicode.IsUpper(runes[0]) {
+				name = t
 			} else {
 				err = ErrFieldNameTagStartNotUpperCase
 			}
