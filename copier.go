@@ -227,18 +227,30 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)
 		}
-		if fromType.ConvertibleTo(toType) {
+		if fromType.ConvertibleTo(toType) || from.Type().Elem().Kind() == reflect.Interface || to.Type().Elem().Kind() == reflect.Interface || opt.DeepCopy {
 			for i := 0; i < from.Len(); i++ {
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
 				}
-				isSet, err := set(to.Index(i), from.Index(i), opt.DeepCopy, converters)
+				fromElem := from.Index(i)
+				for fromElem.Kind() == reflect.Interface && !fromElem.IsNil() {
+					fromElem = fromElem.Elem()
+				}
+				if fromElem.Kind() == reflect.Interface && fromElem.IsNil() {
+					to.Index(i).Set(reflect.Zero(to.Type().Elem()))
+					continue
+				}
+				isSet, err := set(to.Index(i), fromElem, opt.DeepCopy, converters)
 				if err != nil {
 					return err
 				}
 				if !isSet {
 					// ignore error while copy slice element
-					err = copier(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
+					var fromElemVal interface{}
+					if fromElem.IsValid() {
+						fromElemVal = fromElem.Interface()
+					}
+					err = copier(to.Index(i).Addr().Interface(), fromElemVal, opt)
 					if err != nil {
 						continue
 					}

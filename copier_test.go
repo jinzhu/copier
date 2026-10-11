@@ -1774,3 +1774,129 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+func TestCopySliceOfAnyToTypedSlice(t *testing.T) {
+	t.Run("slice of any maps to slice of typed maps", func(t *testing.T) {
+		from := []interface{}{
+			map[string]interface{}{
+				"K1": "V1",
+				"K2": "V2",
+			},
+			map[string]interface{}{
+				"K3": "V3",
+			},
+		}
+
+		var to []map[string]string
+		if err := copier.Copy(&to, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		want := []map[string]string{
+			{"K1": "V1", "K2": "V2"},
+			{"K3": "V3"},
+		}
+		if !reflect.DeepEqual(to, want) {
+			t.Errorf("got %v, want %v", to, want)
+		}
+
+		var toDeep []map[string]string
+		if err := copier.CopyWithOption(&toDeep, from, copier.Option{DeepCopy: true}); err != nil {
+			t.Fatalf("unexpected error with DeepCopy: %v", err)
+		}
+		if !reflect.DeepEqual(toDeep, want) {
+			t.Errorf("got %v, want %v", toDeep, want)
+		}
+	})
+
+	t.Run("slice of any structs to slice of typed structs", func(t *testing.T) {
+		from := []interface{}{
+			User{Name: "Alice", Age: 25, Role: "Developer"},
+			&User{Name: "Bob", Age: 30, Role: "Admin"},
+		}
+
+		var to []Employee
+		if err := copier.Copy(&to, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(to) != 2 {
+			t.Fatalf("expected length 2, got %d", len(to))
+		}
+		if to[0].Name != "Alice" || to[0].Age != 25 || to[0].SuperRule != "Super Developer" {
+			t.Errorf("unexpected first element: %+v", to[0])
+		}
+		if to[1].Name != "Bob" || to[1].Age != 30 || to[1].SuperRule != "Super Admin" {
+			t.Errorf("unexpected second element: %+v", to[1])
+		}
+
+		var toPtrs []*Employee
+		if err := copier.Copy(&toPtrs, from); err != nil {
+			t.Fatalf("unexpected error copying to pointer slice: %v", err)
+		}
+		if len(toPtrs) != 2 || toPtrs[0] == nil || toPtrs[1] == nil {
+			t.Fatalf("expected 2 non-nil pointers, got %v", toPtrs)
+		}
+		if toPtrs[0].Name != "Alice" || toPtrs[1].Name != "Bob" {
+			t.Errorf("unexpected pointer elements: %+v, %+v", toPtrs[0], toPtrs[1])
+		}
+	})
+
+	t.Run("slice of any primitives and convertible types", func(t *testing.T) {
+		fromStrs := []interface{}{"alpha", "beta", "gamma"}
+		var toStrs []string
+		if err := copier.Copy(&toStrs, fromStrs); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		wantStrs := []string{"alpha", "beta", "gamma"}
+		if !reflect.DeepEqual(toStrs, wantStrs) {
+			t.Errorf("got %v, want %v", toStrs, wantStrs)
+		}
+
+		fromInts := []interface{}{int(10), int32(20), int64(30)}
+		var toInts []int64
+		if err := copier.Copy(&toInts, fromInts); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		wantInts := []int64{10, 20, 30}
+		if !reflect.DeepEqual(toInts, wantInts) {
+			t.Errorf("got %v, want %v", toInts, wantInts)
+		}
+	})
+
+	t.Run("slice of any with nil elements and truncation", func(t *testing.T) {
+		from := []interface{}{nil, "valid"}
+		to := []string{"old1", "old2", "old3"}
+		if err := copier.Copy(&to, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []string{"", "valid"}
+		if !reflect.DeepEqual(to, want) {
+			t.Errorf("got %v, want %v", to, want)
+		}
+	})
+
+	t.Run("struct field with slice of any to typed slice field", func(t *testing.T) {
+		type Src struct {
+			Items []interface{}
+		}
+		type Dst struct {
+			Items []map[string]string
+		}
+
+		src := Src{
+			Items: []interface{}{
+				map[string]interface{}{"key": "val"},
+			},
+		}
+		var dst Dst
+		if err := copier.Copy(&dst, src); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []map[string]string{{"key": "val"}}
+		if !reflect.DeepEqual(dst.Items, want) {
+			t.Errorf("got %v, want %v", dst.Items, want)
+		}
+	})
+}
+
