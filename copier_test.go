@@ -1346,6 +1346,83 @@ func TestCopyMapOfPtrValue(t *testing.T) {
 	}
 }
 
+func TestCopyMapOfNilPtrValue(t *testing.T) {
+	type item struct {
+		Value int
+	}
+
+	for _, deepCopy := range []bool{false, true} {
+		t.Run(fmt.Sprintf("DeepCopy=%v", deepCopy), func(t *testing.T) {
+			value := 42
+			existing := 7
+			tests := []struct {
+				name string
+				from interface{}
+				to   interface{}
+			}{
+				{"int/nil-map", map[string]*int{"nil": nil, "value": &value}, new(map[string]*int)},
+				{"int/existing-map", map[string]*int{"nil": nil, "value": &value}, &map[string]*int{"nil": &existing}},
+				{"struct/nil-map", map[string]*item{"nil": nil, "value": {Value: value}}, new(map[string]*item)},
+				{"struct/existing-map", map[string]*item{"nil": nil, "value": {Value: value}}, &map[string]*item{"nil": {Value: existing}}},
+			}
+			for _, tt := range tests {
+				t.Run(tt.name, func(t *testing.T) {
+					if err := copier.CopyWithOption(tt.to, tt.from, copier.Option{DeepCopy: deepCopy}); err != nil {
+						t.Fatal(err)
+					}
+					got := reflect.ValueOf(tt.to).Elem().Interface()
+					if !reflect.DeepEqual(got, tt.from) {
+						t.Errorf("copied map = %#v, want %#v", got, tt.from)
+					}
+					if deepCopy {
+						source := reflect.ValueOf(tt.from).MapIndex(reflect.ValueOf("value"))
+						dest := reflect.ValueOf(got).MapIndex(reflect.ValueOf("value"))
+						if source.Pointer() == dest.Pointer() {
+							t.Error("DeepCopy reused the source pointer")
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
+func TestCopyMapOfNilPtrValueWithConverter(t *testing.T) {
+	for _, deepCopy := range []bool{false, true} {
+		t.Run(fmt.Sprintf("DeepCopy=%v", deepCopy), func(t *testing.T) {
+			from := map[string]*int{"nil": nil}
+			var to map[string]*int
+			wantErr := errors.New("converter error")
+			for _, converterErr := range []error{nil, wantErr} {
+				calls := 0
+				err := copier.CopyWithOption(&to, from, copier.Option{
+					DeepCopy: deepCopy,
+					Converters: []copier.TypeConverter{{
+						SrcType: (*int)(nil),
+						DstType: int(0),
+						Fn: func(src interface{}) (interface{}, error) {
+							calls++
+							if src.(*int) != nil {
+								t.Fatal("converter should receive the nil source pointer")
+							}
+							return 42, converterErr
+						},
+					}},
+				})
+				if !errors.Is(err, converterErr) {
+					t.Fatalf("copy error = %v, want %v", err, converterErr)
+				}
+				if calls != 1 {
+					t.Fatalf("converter called %d times, want 1", calls)
+				}
+				if converterErr == nil && (to["nil"] == nil || *to["nil"] != 42) {
+					t.Errorf("converter result was not copied: %#v", to)
+				}
+			}
+		})
+	}
+}
+
 func TestCopyWithOption(t *testing.T) {
 	from := structSameName2{D: "456", E: &someStruct{IntField: 100, UIntField: 1000}}
 	to := &structSameName1{A: "123", B: 2, C: time.Now(), D: "123", E: &someStruct{UIntField: 5000}}

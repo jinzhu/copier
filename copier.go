@@ -195,13 +195,20 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			if elemType.Kind() != reflect.Slice {
 				elemType, _ = indirectType(elemType)
 			}
+			fromMapValue := from.MapIndex(k)
+			if fromMapValue.Kind() == reflect.Ptr && fromMapValue.IsNil() && toType.Elem().Kind() == reflect.Ptr {
+				if _, ok := converters[converterPair{SrcType: fromMapValue.Type(), DstType: elemType}]; !ok {
+					to.SetMapIndex(toKey, reflect.Zero(toType.Elem()))
+					continue
+				}
+			}
 			toValue := indirect(reflect.New(elemType))
-			isSet, err = set(toValue, from.MapIndex(k), opt.DeepCopy, converters)
+			isSet, err = set(toValue, fromMapValue, opt.DeepCopy, converters)
 			if err != nil {
 				return err
 			}
 			if !isSet {
-				if err = copier(toValue.Addr().Interface(), from.MapIndex(k).Interface(), opt); err != nil {
+				if err = copier(toValue.Addr().Interface(), fromMapValue.Interface(), opt); err != nil {
 					return err
 				}
 			}
