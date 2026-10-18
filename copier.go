@@ -546,6 +546,10 @@ func deepFields(reflectType reflect.Type) []reflect.StructField {
 					// also consider fields of anonymous fields as fields of the root
 					fields = append(fields, deepFields(v.Type)...)
 				}
+			} else if v.Anonymous {
+				// An unexported embedded struct cannot be copied itself, but
+				// its exported fields are promoted to the root.
+				fields = append(fields, deepFields(v.Type)...)
 			}
 		}
 		res = fields
