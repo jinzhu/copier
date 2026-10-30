@@ -279,3 +279,60 @@ func TestValuerConv(t *testing.T) {
 		t.Errorf("copier failed from %#v to %#v", from, failedTo)
 	}
 }
+
+func TestCopySliceWithConverter(t *testing.T) {
+	type SrcItem struct {
+		Val string
+	}
+	type DstItem struct {
+		Num int
+	}
+
+	srcList := []SrcItem{
+		{Val: "10"},
+		{Val: "20"},
+		{Val: "30"},
+	}
+
+	var dstList []DstItem
+	var dstPtrList []*DstItem
+
+	conv := copier.TypeConverter{
+		SrcType: SrcItem{},
+		DstType: DstItem{},
+		Fn: func(src interface{}) (interface{}, error) {
+			s := src.(SrcItem)
+			n, err := strconv.Atoi(s.Val)
+			if err != nil {
+				return nil, err
+			}
+			return DstItem{Num: n}, nil
+		},
+	}
+
+	opt := copier.Option{
+		Converters: []copier.TypeConverter{conv},
+	}
+
+	// Test 1: non-pointer slice element append with converter
+	if err := copier.CopyWithOption(&dstList, &srcList, opt); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(dstList) != 3 {
+		t.Fatalf("expected len 3, got %d", len(dstList))
+	}
+	if dstList[0].Num != 10 || dstList[1].Num != 20 || dstList[2].Num != 30 {
+		t.Errorf("unexpected elements in dstList: %+v", dstList)
+	}
+
+	// Test 2: pointer slice element append with converter
+	if err := copier.CopyWithOption(&dstPtrList, &srcList, opt); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(dstPtrList) != 3 {
+		t.Fatalf("expected len 3, got %d", len(dstPtrList))
+	}
+	if dstPtrList[0].Num != 10 || dstPtrList[1].Num != 20 || dstPtrList[2].Num != 30 {
+		t.Errorf("unexpected elements in dstPtrList: %+v", dstPtrList)
+	}
+}

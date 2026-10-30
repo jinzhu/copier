@@ -294,10 +294,14 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 				if isSlice {
 					// FIXME: maybe should check the other types?
 					if to.Type().Elem().Kind() == reflect.Ptr {
-						to.Index(i).Set(dest.Addr())
+						if to.Len() < i+1 {
+							to.Set(reflect.Append(to, dest.Addr()))
+						} else {
+							to.Index(i).Set(dest.Addr())
+						}
 					} else {
 						if to.Len() < i+1 {
-							reflect.Append(to, dest)
+							to.Set(reflect.Append(to, dest))
 						} else {
 							to.Index(i).Set(dest)
 						}
