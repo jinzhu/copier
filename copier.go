@@ -147,11 +147,11 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 	fromType, isPtrFrom := indirectType(from.Type())
 	toType, _ := indirectType(to.Type())
 
-	if fromType.Kind() == reflect.Interface {
+	if fromType != nil && fromType.Kind() == reflect.Interface && from.IsValid() && from.Interface() != nil {
 		fromType = reflect.TypeOf(from.Interface())
 	}
 
-	if toType.Kind() == reflect.Interface {
+	if toType != nil && toType.Kind() == reflect.Interface && to.IsValid() && to.Interface() != nil {
 		toType, _ = indirectType(reflect.TypeOf(to.Interface()))
 		oldTo := to
 		to = reflect.New(reflect.TypeOf(to.Interface())).Elem()
@@ -227,18 +227,35 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			slice := reflect.MakeSlice(reflect.SliceOf(to.Type().Elem()), from.Len(), from.Cap())
 			to.Set(slice)
 		}
-		if fromType.ConvertibleTo(toType) {
+		fromElemType := from.Type().Elem()
+		toElemType := to.Type().Elem()
+		if fromType.ConvertibleTo(toType) || fromElemType.Kind() == reflect.Interface || (toElemType.Kind() == reflect.Interface && checkElementCompatibility(toElemType, fromElemType, converters)) || (opt.DeepCopy && checkElementCompatibility(toElemType, fromElemType, converters)) {
 			for i := 0; i < from.Len(); i++ {
 				if to.Len() < i+1 {
 					to.Set(reflect.Append(to, reflect.New(to.Type().Elem()).Elem()))
 				}
-				isSet, err := set(to.Index(i), from.Index(i), opt.DeepCopy, converters)
+				fromElem := from.Index(i)
+				for fromElem.Kind() == reflect.Interface && !fromElem.IsNil() {
+					fromElem = fromElem.Elem()
+				}
+				if fromElem.Kind() == reflect.Interface && fromElem.IsNil() {
+					to.Index(i).Set(reflect.Zero(to.Type().Elem()))
+					continue
+				}
+				isSet, err := set(to.Index(i), fromElem, opt.DeepCopy, converters)
 				if err != nil {
 					return err
 				}
 				if !isSet {
+					if !fromElem.IsValid() || !checkElementCompatibility(to.Type().Elem(), fromElem.Type(), converters) {
+						continue
+					}
 					// ignore error while copy slice element
-					err = copier(to.Index(i).Addr().Interface(), from.Index(i).Interface(), opt)
+					var fromElemVal interface{}
+					if fromElem.IsValid() {
+						fromElemVal = fromElem.Interface()
+					}
+					err = copier(to.Index(i).Addr().Interface(), fromElemVal, opt)
 					if err != nil {
 						continue
 					}
@@ -565,11 +582,105 @@ func indirect(reflectValue reflect.Value) reflect.Value {
 }
 
 func indirectType(reflectType reflect.Type) (_ reflect.Type, isPtr bool) {
+	if reflectType == nil {
+		return nil, false
+	}
 	for reflectType.Kind() == reflect.Ptr || reflectType.Kind() == reflect.Slice {
 		reflectType = reflectType.Elem()
 		isPtr = true
 	}
 	return reflectType, isPtr
+}
+
+var (
+	scannerType = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+	valuerType  = reflect.TypeOf((*driver.Valuer)(nil)).Elem()
+)
+
+func hasConverter(toType, fromType reflect.Type, converters map[converterPair]TypeConverter) bool {
+	if len(converters) == 0 || toType == nil || fromType == nil {
+		return false
+	}
+	if _, ok := converters[converterPair{SrcType: fromType, DstType: toType}]; ok {
+		return true
+	}
+	return false
+}
+
+func checkElementCompatibility(toType, fromType reflect.Type, converters map[converterPair]TypeConverter) bool {
+	if toType == nil || fromType == nil {
+		return false
+	}
+
+	// Converter registered
+	if hasConverter(toType, fromType, converters) {
+		return true
+	}
+
+	// Directly assignable or convertible
+	if fromType.AssignableTo(toType) || fromType.ConvertibleTo(toType) {
+		return true
+	}
+
+	// Interface source: dynamic element types inside the interface can only be known at element inspection
+	if fromType.Kind() == reflect.Interface {
+		return true
+	}
+
+	// Interface destination: source must implement or be assignable/convertible to the interface
+	if toType.Kind() == reflect.Interface {
+		if reflect.PtrTo(fromType).AssignableTo(toType) {
+			return true
+		}
+		if fromType.Kind() == reflect.Ptr && fromType.Elem().AssignableTo(toType) {
+			return true
+		}
+		return false
+	}
+
+	// Scanner / Valuer compatibility
+	if reflect.PtrTo(toType).Implements(scannerType) || toType.Implements(scannerType) {
+		return true
+	}
+	if reflect.PtrTo(fromType).Implements(valuerType) || fromType.Implements(valuerType) {
+		return true
+	}
+
+	// Unwrap pointers for structural comparisons
+	toBase, _ := indirectType(toType)
+	fromBase, _ := indirectType(fromType)
+
+	if toBase == nil || fromBase == nil {
+		return false
+	}
+
+	if fromBase.AssignableTo(toBase) || fromBase.ConvertibleTo(toBase) {
+		return true
+	}
+
+	if toBase.Kind() == reflect.Interface {
+		if fromBase.AssignableTo(toBase) || reflect.PtrTo(fromBase).AssignableTo(toBase) {
+			return true
+		}
+		return false
+	}
+
+	// Struct to struct
+	if toBase.Kind() == reflect.Struct && fromBase.Kind() == reflect.Struct {
+		return true
+	}
+
+	// Map to map (keys must be convertible)
+	if toBase.Kind() == reflect.Map && fromBase.Kind() == reflect.Map {
+		return fromBase.Key().ConvertibleTo(toBase.Key())
+	}
+
+	// Slice to slice
+	if toType.Kind() == reflect.Slice && fromType.Kind() == reflect.Slice {
+		return checkElementCompatibility(toType.Elem(), fromType.Elem(), converters)
+	}
+
+	return false
 }
 
 func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]TypeConverter) (bool, error) {
@@ -612,10 +723,13 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 
 	if deepCopy {
 		toKind := to.Kind()
-		if toKind == reflect.Interface && to.IsNil() {
-			if reflect.TypeOf(from.Interface()) != nil {
-				to.Set(reflect.New(reflect.TypeOf(from.Interface())).Elem())
-				toKind = reflect.TypeOf(to.Interface()).Kind()
+		if toKind == reflect.Interface && to.IsNil() && from.IsValid() && from.Interface() != nil {
+			concreteFromType := reflect.TypeOf(from.Interface())
+			if concreteFromType != nil && concreteFromType.AssignableTo(to.Type()) {
+				to.Set(reflect.New(concreteFromType).Elem())
+				if to.Interface() != nil {
+					toKind = reflect.TypeOf(to.Interface()).Kind()
+				}
 			}
 		}
 		if from.Kind() == reflect.Ptr && from.IsNil() {
@@ -625,6 +739,16 @@ func set(to, from reflect.Value, deepCopy bool, converters map[converterPair]Typ
 		if _, ok := to.Addr().Interface().(sql.Scanner); !ok && (toKind == reflect.Struct || toKind == reflect.Map || toKind == reflect.Slice) {
 			return false, nil
 		}
+	}
+
+	if from.Type().AssignableTo(to.Type()) {
+		to.Set(from)
+		return true, nil
+	}
+
+	if from.CanAddr() && from.Addr().Type().AssignableTo(to.Type()) {
+		to.Set(from.Addr())
+		return true, nil
 	}
 
 	// try convert directly

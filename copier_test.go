@@ -1774,3 +1774,247 @@ func TestNestedNilPointerStruct(t *testing.T) {
 		t.Errorf("to (%v) value should equal from (%v) value", to.Title, from.Title)
 	}
 }
+
+func TestCopySliceOfAnyToTypedSlice(t *testing.T) {
+	t.Run("slice of any maps to slice of typed maps", func(t *testing.T) {
+		from := []interface{}{
+			map[string]interface{}{
+				"K1": "V1",
+				"K2": "V2",
+			},
+			map[string]interface{}{
+				"K3": "V3",
+			},
+		}
+
+		var to []map[string]string
+		if err := copier.Copy(&to, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		want := []map[string]string{
+			{"K1": "V1", "K2": "V2"},
+			{"K3": "V3"},
+		}
+		if !reflect.DeepEqual(to, want) {
+			t.Errorf("got %v, want %v", to, want)
+		}
+
+		var toDeep []map[string]string
+		if err := copier.CopyWithOption(&toDeep, from, copier.Option{DeepCopy: true}); err != nil {
+			t.Fatalf("unexpected error with DeepCopy: %v", err)
+		}
+		if !reflect.DeepEqual(toDeep, want) {
+			t.Errorf("got %v, want %v", toDeep, want)
+		}
+	})
+
+	t.Run("slice of any structs to slice of typed structs", func(t *testing.T) {
+		from := []interface{}{
+			User{Name: "Alice", Age: 25, Role: "Developer"},
+			&User{Name: "Bob", Age: 30, Role: "Admin"},
+		}
+
+		var to []Employee
+		if err := copier.Copy(&to, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		if len(to) != 2 {
+			t.Fatalf("expected length 2, got %d", len(to))
+		}
+		if to[0].Name != "Alice" || to[0].Age != 25 || to[0].SuperRule != "Super Developer" {
+			t.Errorf("unexpected first element: %+v", to[0])
+		}
+		if to[1].Name != "Bob" || to[1].Age != 30 || to[1].SuperRule != "Super Admin" {
+			t.Errorf("unexpected second element: %+v", to[1])
+		}
+
+		var toPtrs []*Employee
+		if err := copier.Copy(&toPtrs, from); err != nil {
+			t.Fatalf("unexpected error copying to pointer slice: %v", err)
+		}
+		if len(toPtrs) != 2 || toPtrs[0] == nil || toPtrs[1] == nil {
+			t.Fatalf("expected 2 non-nil pointers, got %v", toPtrs)
+		}
+		if toPtrs[0].Name != "Alice" || toPtrs[1].Name != "Bob" {
+			t.Errorf("unexpected pointer elements: %+v, %+v", toPtrs[0], toPtrs[1])
+		}
+	})
+
+	t.Run("slice of any primitives and convertible types", func(t *testing.T) {
+		fromStrs := []interface{}{"alpha", "beta", "gamma"}
+		var toStrs []string
+		if err := copier.Copy(&toStrs, fromStrs); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		wantStrs := []string{"alpha", "beta", "gamma"}
+		if !reflect.DeepEqual(toStrs, wantStrs) {
+			t.Errorf("got %v, want %v", toStrs, wantStrs)
+		}
+
+		fromInts := []interface{}{int(10), int32(20), int64(30)}
+		var toInts []int64
+		if err := copier.Copy(&toInts, fromInts); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		wantInts := []int64{10, 20, 30}
+		if !reflect.DeepEqual(toInts, wantInts) {
+			t.Errorf("got %v, want %v", toInts, wantInts)
+		}
+	})
+
+	t.Run("slice of any with nil elements and truncation", func(t *testing.T) {
+		from := []interface{}{nil, "valid"}
+		to := []string{"old1", "old2", "old3"}
+		if err := copier.Copy(&to, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []string{"", "valid"}
+		if !reflect.DeepEqual(to, want) {
+			t.Errorf("got %v, want %v", to, want)
+		}
+	})
+
+	t.Run("struct field with slice of any to typed slice field", func(t *testing.T) {
+		type Src struct {
+			Items []interface{}
+		}
+		type Dst struct {
+			Items []map[string]string
+		}
+
+		src := Src{
+			Items: []interface{}{
+				map[string]interface{}{"key": "val"},
+			},
+		}
+		var dst Dst
+		if err := copier.Copy(&dst, src); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		want := []map[string]string{{"key": "val"}}
+		if !reflect.DeepEqual(dst.Items, want) {
+			t.Errorf("got %v, want %v", dst.Items, want)
+		}
+	})
+}
+
+type customTestStringer string
+
+func (s customTestStringer) String() string {
+	return string(s)
+}
+
+func TestCopyIncompatibleSliceElements(t *testing.T) {
+	t.Run("incompatible concrete slice to interface slice does not panic", func(t *testing.T) {
+		var dst []fmt.Stringer
+		if err := copier.Copy(&dst, []int{1}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(dst) != 1 {
+			t.Fatalf("expected length 1, got %d", len(dst))
+		}
+		if dst[0] != nil {
+			t.Errorf("expected nil element, got %v", dst[0])
+		}
+
+		var dstDeep []fmt.Stringer
+		if err := copier.CopyWithOption(&dstDeep, []int{1}, copier.Option{DeepCopy: true}); err != nil {
+			t.Fatalf("unexpected error with DeepCopy: %v", err)
+		}
+		if len(dstDeep) != 1 || dstDeep[0] != nil {
+			t.Errorf("expected length 1 with nil element, got %v", dstDeep)
+		}
+	})
+
+	t.Run("incompatible slice of any elements to interface slice does not panic", func(t *testing.T) {
+		var dst []fmt.Stringer
+		if err := copier.Copy(&dst, []interface{}{1, 2, 3}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(dst) != 3 {
+			t.Fatalf("expected length 3, got %d", len(dst))
+		}
+		for i, v := range dst {
+			if v != nil {
+				t.Errorf("expected element %d to be nil, got %v", i, v)
+			}
+		}
+	})
+
+	t.Run("slice of any with mixed compatible and incompatible elements", func(t *testing.T) {
+		var dst []fmt.Stringer
+		from := []interface{}{
+			customTestStringer("hello"),
+			123,
+			customTestStringer("world"),
+		}
+		if err := copier.Copy(&dst, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(dst) != 3 {
+			t.Fatalf("expected length 3, got %d", len(dst))
+		}
+		if dst[0] == nil || dst[0].String() != "hello" {
+			t.Errorf("expected dst[0] to be hello, got %v", dst[0])
+		}
+		if dst[1] != nil {
+			t.Errorf("expected dst[1] to be nil, got %v", dst[1])
+		}
+		if dst[2] == nil || dst[2].String() != "world" {
+			t.Errorf("expected dst[2] to be world, got %v", dst[2])
+		}
+	})
+
+	t.Run("incompatible concrete slice to concrete slice does not panic", func(t *testing.T) {
+		var dst []int
+		if err := copier.Copy(&dst, []string{"alpha", "beta"}); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(dst) != 2 {
+			t.Fatalf("expected length 2, got %d", len(dst))
+		}
+		if dst[0] != 0 || dst[1] != 0 {
+			t.Errorf("expected zero values, got %v", dst)
+		}
+	})
+
+	t.Run("slice of any with incompatible concrete elements to concrete slice", func(t *testing.T) {
+		var dst []int
+		from := []interface{}{"not_an_int", 42}
+		if err := copier.Copy(&dst, from); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(dst) != 2 {
+			t.Fatalf("expected length 2, got %d", len(dst))
+		}
+		if dst[0] != 0 {
+			t.Errorf("expected dst[0] to be 0, got %d", dst[0])
+		}
+		if dst[1] != 42 {
+			t.Errorf("expected dst[1] to be 42, got %d", dst[1])
+		}
+	})
+
+	t.Run("direct copy incompatible type to nil interface does not panic", func(t *testing.T) {
+		var dst fmt.Stringer
+		if err := copier.Copy(&dst, 1); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if dst != nil {
+			t.Errorf("expected dst to be nil, got %v", dst)
+		}
+	})
+
+	t.Run("direct copy compatible type to nil interface", func(t *testing.T) {
+		var dst fmt.Stringer
+		if err := copier.Copy(&dst, customTestStringer("supported")); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if dst == nil || dst.String() != "supported" {
+			t.Errorf("expected dst to be supported, got %v", dst)
+		}
+	})
+}
+
