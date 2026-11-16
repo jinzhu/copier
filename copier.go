@@ -332,22 +332,24 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 			for _, field := range fromTypeFields {
 				name := field.Name
 
-				// Get bit flags for field
-				fieldFlags := flgs.BitFlags[name]
+				fieldNamesMapping := getFieldNamesMapping(mappings, fromType, toType)
 
-				// Check if we should ignore copying
+				srcFieldName, destFieldName := getFieldName(name, flgs, fieldNamesMapping)
+				f, hasDestField := fieldTypeByName(dest.Type(), destFieldName, opt.CaseSensitive)
+				if hasDestField {
+					destFieldName = f.Name
+				}
+				// Tags belong to the resolved destination, which can have a
+				// different name from the source field or mapping alias.
+				fieldFlags := flgs.BitFlags[destFieldName]
 				if (fieldFlags & tagIgnore) != 0 {
 					continue
 				}
 
-				fieldNamesMapping := getFieldNamesMapping(mappings, fromType, toType)
-
-				srcFieldName, destFieldName := getFieldName(name, flgs, fieldNamesMapping)
-
 				if fromField := fieldByNameOrZeroValue(source, srcFieldName); fromField.IsValid() && !shouldIgnore(fromField, fieldFlags, opt.IgnoreEmpty) {
 					// process for nested anonymous field
 					destFieldNotSet := false
-					if f, ok := dest.Type().FieldByName(destFieldName); ok {
+					if hasDestField {
 						// only initialize parent embedded struct pointer in the path
 						for idx := range f.Index[:len(f.Index)-1] {
 							destField := dest.FieldByIndex(f.Index[:idx+1])
@@ -374,7 +376,10 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 						break
 					}
 
-					toField := fieldByName(dest, destFieldName, opt.CaseSensitive)
+					var toField reflect.Value
+					if hasDestField {
+						toField = dest.FieldByIndex(f.Index)
+					}
 					if toField.IsValid() {
 						if toField.CanSet() {
 							isSet, err := set(toField, fromField, opt.DeepCopy, converters)
@@ -388,7 +393,7 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 							}
 							if fieldFlags != 0 {
 								// Note that a copy was made
-								flgs.BitFlags[name] = fieldFlags | hasCopied
+								flgs.BitFlags[destFieldName] = fieldFlags | hasCopied
 							}
 						}
 					} else {
@@ -871,41 +876,30 @@ func driverValuer(v reflect.Value) (i driver.Valuer, ok bool) {
 }
 
 func fieldByName(v reflect.Value, name string, caseSensitive bool) reflect.Value {
-	if caseSensitive {
-		return v.FieldByName(name)
+	if field, ok := fieldTypeByName(v.Type(), name, caseSensitive); ok {
+		return v.FieldByIndex(field.Index)
 	}
-
-	// For case-insensitive matching, prioritize exported fields
-	// First try exact match (might be the exported field)
-	if field := v.FieldByName(name); field.IsValid() {
-		return field
-	}
-
-	// If exact match fails, perform case-insensitive matching
-	// but prioritize exported fields while preserving promoted-field lookup.
-	var candidates []reflect.Value
-	var candidateFields []reflect.StructField
-
-	for _, fieldType := range reflect.VisibleFields(v.Type()) {
-		if strings.EqualFold(fieldType.Name, name) {
-			field := v.FieldByIndex(fieldType.Index)
-			candidates = append(candidates, field)
-			candidateFields = append(candidateFields, fieldType)
-		}
-	}
-
-	// If there are multiple candidate fields, prioritize exported ones
-	for i, candidate := range candidates {
-		if candidateFields[i].IsExported() {
-			return candidate
-		}
-	}
-
-	// If no exported field found, return the first match (preserve original behavior)
-	if len(candidates) > 0 {
-		return candidates[0]
-	}
-
-	// If no match found, return zero value
 	return reflect.Value{}
+}
+
+func fieldTypeByName(t reflect.Type, name string, caseSensitive bool) (reflect.StructField, bool) {
+	if field, ok := t.FieldByName(name); ok || caseSensitive {
+		return field, ok
+	}
+
+	// Keep exact matches first, then the first exported case-insensitive
+	// match, falling back to an unexported field only if necessary.
+	var first reflect.StructField
+	var found bool
+	for _, field := range reflect.VisibleFields(t) {
+		if strings.EqualFold(field.Name, name) {
+			if field.IsExported() {
+				return field, true
+			}
+			if !found {
+				first, found = field, true
+			}
+		}
+	}
+	return first, found
 }
