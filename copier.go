@@ -423,7 +423,9 @@ func copier(toValue interface{}, fromValue interface{}, opt Option) (err error) 
 					if toField := fieldByName(dest, destFieldName, opt.CaseSensitive); toField.IsValid() && toField.CanSet() {
 						values := fromMethod.Call([]reflect.Value{})
 						if len(values) >= 1 {
-							set(toField, values[0], opt.DeepCopy, converters)
+							if _, err := set(toField, values[0], opt.DeepCopy, converters); err != nil {
+								return err
+							}
 						}
 					}
 				}
