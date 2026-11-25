@@ -94,6 +94,19 @@ func TestCopyTagMustAndNoPanic(t *testing.T) {
 	}
 }
 
+func TestCopyTagFlagsIgnoreWhitespace(t *testing.T) {
+	type EmployeeSpacedTags struct {
+		Name string `copier:"must, nopanic"`
+	}
+
+	employee := &EmployeeSpacedTags{}
+	user := &User2{DOB: "1 January 1970"}
+	err := copier.Copy(employee, user)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestCopyTagMustAndNoPanicByOption(t *testing.T) {
 	employee := &EmployeeTags3{}
 	user := &User2{DOB: "1 January 1970"}
